@@ -20,6 +20,31 @@
 
 AetherLang (Ω) is a **production-ready DSL** designed specifically for building, visualizing, and executing complex AI workflows. Think of it as **"Airflow meets Prefect"** but with a clean, declarative syntax optimized for LLM orchestration.
 
+### 🖼️ Visual Interface
+
+<p align="center">
+  <img src="screenshots/hero-interface.png" alt="AetherLang Interface" width="800"/>
+  <br/>
+  <em>Professional code editor with syntax highlighting and real-time validation</em>
+</p>
+
+### 🎨 Flow Visualization
+
+<p align="center">
+  <img src="screenshots/visualization-grid.png" alt="Grid Mode" width="400"/>
+  <img src="screenshots/visualization-physics.png" alt="Physics Mode" width="400"/>
+  <br/>
+  <em>Interactive visual debugger with Grid and Physics modes</em>
+</p>
+
+### ✅ Execution Results
+
+<p align="center">
+  <img src="screenshots/execution-success.png" alt="Execution Results" width="800"/>
+  <br/>
+  <em>Real-time execution with comprehensive output (supports Greek and English)</em>
+</p>
+
 ### ✨ Key Features
 
 - 🎯 **28 Specialized Node Types** - Guards, LLMs, RAG, caching, validation, and more
@@ -30,6 +55,10 @@ AetherLang (Ω) is a **production-ready DSL** designed specifically for building
 - 🧪 **Comprehensive Validation** - Type checking, cycle detection, and semantic analysis
 - 🚀 **Zero External Dependencies** - Pure Python implementation (except OpenAI SDK)
 - 📊 **Physics-Based Layout** - Force-directed graph visualization with drag & drop
+- 💾 **Export & Import** - Export flows as JSON for sharing and version control
+- 🔧 **Monaco Editor Integration** - Professional code editing experience with IntelliSense
+- 📈 **Performance Profiling** - Built-in profiler for bottleneck detection and optimization
+- 🧠 **AI-Powered Optimization** - GPT-4o analyzes your flows and suggests improvements
 
 ---
 
