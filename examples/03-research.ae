@@ -1,0 +1,43 @@
+// Complex Research Pipeline
+// Multi-path flow with RAG, parallel processing, and merging
+
+flow ResearchPipeline {
+  using target "neuroaether" version ">=0.2";
+
+  // Inputs
+  input text research_question;
+  input list keywords;
+
+  // Entry point
+  node Guard: guard mode="STRICT";
+  node Planner: plan steps=5;
+
+  // Parallel paths
+  node PathA_RAG: rag sources=["docs", "web"], top_k=10;
+  node PathB_Search: http method="GET", endpoint="https://api.search.com";
+  node PathC_Analysis: analyze depth="comprehensive";
+
+  // Processing
+  node Merger: merge strategy="weighted";
+  node Synthesizer: llm model="gpt-4o", temp=0.3,
+                        system="You are a research assistant";
+  node Validator: validate schema="research_output";
+
+  // Final output
+  node Reporter: summarize length="long", style="academic";
+
+  // Flow connections
+  Guard -> Planner;
+
+  // Parallel execution
+  Planner -> PathA_RAG -> Merger;
+  Planner -> PathB_Search -> Merger;
+  Planner -> PathC_Analysis -> Merger;
+
+  // Sequential processing
+  Merger -> Synthesizer -> Validator -> Reporter;
+
+  // Outputs
+  output text research_report from Reporter;
+  output text findings from Synthesizer;
+}

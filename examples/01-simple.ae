@@ -1,0 +1,20 @@
+// Simple 3-Node Flow
+// A basic example showing the fundamentals of AetherLang
+
+flow SimpleDemo {
+  using target "neuroaether" version ">=0.2";
+
+  // Define input
+  input text query;
+
+  // Define nodes
+  node Guard: guard mode="STRICT";
+  node LLM: llm model="gpt-4o-mini", temp=0.7;
+  node Summarizer: summarize length="short";
+
+  // Connect nodes in sequence
+  Guard -> LLM -> Summarizer;
+
+  // Define output
+  output text summary from Summarizer;
+}

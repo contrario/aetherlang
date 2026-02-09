@@ -1,0 +1,25 @@
+// Document Analysis Flow
+// Analyzes documents with caching, retry logic, and validation
+
+flow DocumentAnalysis {
+  using target "neuroaether" version ">=0.2";
+
+  // Inputs
+  input text document;
+  input text analysis_type;
+
+  // Nodes
+  node Guard: guard mode="STRICT";
+  node Cache: cache ttl=3600;
+  node Retry: retry attempts=3, delay=1.0;
+  node Analyzer: analyze depth="deep", sentiment=true;
+  node Validator: validate schema="analysis_result";
+  node Summary: summarize length="medium";
+
+  // Flow: Guard → Cache → Retry → Analyze → Validate → Summarize
+  Guard -> Cache -> Retry -> Analyzer -> Validator -> Summary;
+
+  // Outputs
+  output text analysis from Analyzer;
+  output text summary from Summary;
+}

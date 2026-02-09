@@ -1,0 +1,39 @@
+// Greek Education Assistant
+// Generates educational content for Greek students (Grades A'-ΣΤ')
+
+flow GreekEducation {
+  using target "neuroaether" version ">=0.2";
+
+  // Εισαγωγές (Inputs)
+  input text mathema;    // Π.χ. "Μαθηματικά", "Ιστορία"
+  input text taxi;       // Π.χ. "Β' Δημοτικού"
+  input text thema;      // Το θέμα του μαθήματος
+
+  // Κόμβοι (Nodes)
+  node Guard: guard mode="EDUCATIONAL";
+
+  node Planner: plan steps=3,
+                     system="Σχεδίασε μάθημα για δημοτικό";
+
+  node Educator: llm model="gpt-4o-mini",
+                     temp=0.7,
+                     system="Είσαι δάσκαλος δημοτικού στην Ελλάδα";
+
+  node Simplifier: summarize length="short",
+                            style="educational",
+                            language="greek";
+
+  node QuizMaker: transform type="quiz",
+                           questions=5,
+                           difficulty="age-appropriate";
+
+  node Validator: validate schema="educational_content",
+                          language="greek";
+
+  // Ροή (Flow)
+  Guard -> Planner -> Educator -> Simplifier -> QuizMaker -> Validator;
+
+  // Έξοδοι (Outputs)
+  output text explanation from Simplifier;
+  output text quiz from QuizMaker;
+}
