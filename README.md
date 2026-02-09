@@ -122,6 +122,28 @@ result = asyncio.run(runtime.execute(flow, {"query": "What is AetherLang?"}))
 print(result["outputs"]["summary"])
 ```
 
+### Real Execution Example
+
+This workflow completed in **20.7 seconds** with the following breakdown:
+
+```
+Guard (validation):    0.25s  ⚡
+Planner (strategy):    4.23s
+RAG (research):        7.89s  ⚠️  ← bottleneck identified!
+LLM (generation):      6.12s
+Summarizer:            2.19s
+────────────────────────────
+Total:                20.68s
+```
+
+**Performance Insights:**
+- ⚠️ RAG node is the bottleneck (38% of total time)
+- 💡 Recommendation: Add caching layer before RAG
+- 📊 Estimated improvement: -60% execution time
+- 💰 Cost: $0.023 for this execution
+
+The built-in profiler **immediately identifies** the RAG node as the bottleneck, enabling targeted optimization.
+
 ---
 
 ## 📚 Language Syntax
@@ -163,25 +185,30 @@ Full documentation: [docs/nodes.md](docs/nodes.md)
 
 ## 🎨 Visual Flow Designer
 
-AetherLang includes a **production-grade visual designer** with:
+<p align="center">
+  <img src="screenshots/interface-with-results.png" alt="Full Interface" width="800"/>
+  <br/>
+  <em>Complete workflow visualization with real-time execution metrics</em>
+</p>
 
-- ⚡ **Real-time visualization** - See your flow as you type
+AetherLang includes a **production-grade visual debugger** showing:
+
+- ⚡ **Real-time execution** - See your workflow run with live progress
+- 📊 **Performance metrics** - Per-node timing (Guard: 0.25s, RAG: 7.89s, etc.)
+- 💰 **Cost tracking** - Monitor API costs as you execute
+- 🎨 **Interactive visualization** - 4 layout modes (Grid/Hierarchical/Physics/Circular)
 - 🎭 **Live execution** - Watch nodes turn blue (running) → green (complete)
-- 🌊 **Animated data flow** - See data flowing through edges
 - 🧲 **Physics-based layout** - Drag & drop nodes with force-directed positioning
 - 📊 **Zoom & Pan** - Navigate large flows (30%-300% zoom)
-- 💾 **Export** - SVG vector graphics & high-res PNG (2x)
 - 🎯 **Interactive tooltips** - Hover for node details, click to highlight connections
 
+<p align="center">
+  <img src="screenshots/execution-details.png" alt="Execution Results" width="800"/>
+  <br/>
+  <em>Detailed execution results with node-by-node performance breakdown</em>
+</p>
+
 **Try it live:** [neurodoc.app/aether-nexus-omega-dsl](https://neurodoc.app/aether-nexus-omega-dsl)
-
-<div align="center">
-
-![Flow Visualization](https://via.placeholder.com/800x400/1e293b/06b6d4?text=Flow+Visualization+Demo)
-
-*Interactive flow visualization with real-time execution tracking*
-
-</div>
 
 ---
 
