@@ -20,6 +20,12 @@
 
 AetherLang (Ω) is a **production-ready DSL** designed specifically for building, visualizing, and executing complex AI workflows. Think of it as **"Airflow meets Prefect"** but with a clean, declarative syntax optimized for LLM orchestration.
 
+<p align="center">
+  <img src="screenshots/full-workflow.png" alt="Complete Workflow" width="800"/>
+  <br/>
+  <em>End-to-end AI workflow orchestration with visual debugging</em>
+</p>
+
 ### 🖼️ Visual Interface
 
 <p align="center">
