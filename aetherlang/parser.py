@@ -48,6 +48,19 @@ class NodeType(Enum):
     ENRICH = "enrich"  # Enrich data with external sources
     SLEEP = "sleep"  # Add delays
     RATE_LIMIT = "rate_limit"  # Rate limiting
+    # NeuroAether v2 - Domain-specific nodes
+    CHEF = "chef"
+    MOLECULAR = "molecular"
+    BALANCE = "balance"
+    VISION = "vision"
+    ASSEMBLY = "assembly"
+    ORACLE = "oracle"
+    APEX = "apex"
+    RESEARCH = "research"
+    CONSULT = "consult"
+    MARKET = "market"
+    VISUALIZER = "visualizer"
+    # NeuroAether v2 - Domain-specific nodes
 
 
 @dataclass
@@ -101,7 +114,7 @@ class AetherParser:
     INPUT_RE = re.compile(r'input\s+(?P<dtype>\w+)\s+(?P<name>\w+)\s*;')
     OUTPUT_RE = re.compile(r'output\s+(?P<dtype>\w+)\s+(?P<name>\w+)\s+from\s+(?P<src>\w+)\s*;')
     NODE_RE = re.compile(r'node\s+(?P<alias>\w+)\s*:\s*(?P<type>\w+)(?:\s+(?P<params>[^;]+))?\s*;')
-    EDGE_RE = re.compile(r'(?P<src>\w+)\s*->\s*(?P<dst>\w+)\s*;')
+    CHAIN_RE = re.compile(r'(\w+(?:\s*->\s*\w+)+)\s*;')
     COMMENT_RE = re.compile(r'//.*?$|/\*.*?\*/', re.MULTILINE | re.DOTALL)
 
     def __init__(self):
@@ -153,21 +166,22 @@ class AetherParser:
             node = Node(alias=alias, node_type=node_type, params=params)
             flow.nodes[alias] = node
 
-        # Parse edges
-        for match in self.EDGE_RE.finditer(flow_body):
-            src = match.group('src')
-            dst = match.group('dst')
-
-            if src not in flow.nodes:
-                self.errors.append(f"⚠️ Το node '{src}' δεν έχει οριστεί")
+        # Parse edges (supports chains like A -> B -> C -> D;)
+        for match in self.CHAIN_RE.finditer(flow_body):
+            chain_str = match.group(1)
+            node_names = [n.strip() for n in chain_str.split('->')]
+            if node_names[0] in ('input', 'output', 'node', 'using', 'flow'):
                 continue
-            if dst not in flow.nodes:
-                self.errors.append(f"⚠️ Το node '{dst}' δεν έχει οριστεί")
-                continue
-
-            edge = Edge(source=src, target=dst)
-            flow.edges.append(edge)
-
+            for j in range(len(node_names) - 1):
+                src = node_names[j]
+                dst = node_names[j + 1]
+                if src not in flow.nodes:
+                    continue
+                if dst not in flow.nodes:
+                    continue
+                if not any(e.source == src and e.target == dst for e in flow.edges):
+                    edge = Edge(source=src, target=dst)
+                    flow.edges.append(edge)
         # Parse outputs
         for match in self.OUTPUT_RE.finditer(flow_body):
             dtype = match.group('dtype')

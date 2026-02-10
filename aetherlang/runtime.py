@@ -9,6 +9,7 @@ import json
 
 from .parser import Flow, Node, NodeType, Edge
 from openai import AsyncOpenAI
+from services.aetherlang.v2_prompts import V2_PROMPTS
 
 
 @dataclass
@@ -44,6 +45,8 @@ class AetherRuntime:
     def __init__(self, openai_api_key: str):
         self.openai_client = AsyncOpenAI(api_key=openai_api_key)
         self.execution_history: List[ExecutionContext] = []
+        self.profiler = None  # Optional profiler for performance tracking
+        self.debugger = None  # Optional time-travel debugger
 
     async def execute(self, flow: Flow, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a complete flow"""
@@ -96,6 +99,20 @@ class AetherRuntime:
     async def _execute_node(self, ctx: ExecutionContext, node: Node):
         """Execute a single node"""
         ctx.log(node.alias, "START", f"Εκτέλεση node τύπου {node.node_type.value}")
+
+        # Start profiling if profiler is enabled
+        if self.profiler:
+            self.profiler.start_node(node.alias, node.node_type.value)
+
+        # Record debugger snapshot at node start
+        if self.debugger:
+            upstream_data_preview = self._get_upstream_data(ctx, node)
+            self.debugger.record_node_start(
+                node_name=node.alias,
+                node_type=node.node_type.value,
+                input_data=upstream_data_preview,
+                context={"node_outputs": dict(ctx.node_outputs), "inputs": dict(ctx.inputs)}
+            )
 
         try:
             # Get inputs from upstream nodes
@@ -163,14 +180,85 @@ class AetherRuntime:
                 result = await self._execute_sleep(ctx, node, upstream_data)
             elif node.node_type == NodeType.RATE_LIMIT:
                 result = await self._execute_rate_limit(ctx, node, upstream_data)
+            # V2 Domain-specific nodes
+            elif node.node_type == NodeType.CHEF:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'chef')
+            elif node.node_type == NodeType.MOLECULAR:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'molecular')
+            elif node.node_type == NodeType.BALANCE:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'balance')
+            elif node.node_type == NodeType.VISION:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'vision')
+            elif node.node_type == NodeType.ASSEMBLY:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'assembly')
+            elif node.node_type == NodeType.ORACLE:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'oracle')
+            elif node.node_type == NodeType.APEX:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'apex')
+            elif node.node_type == NodeType.RESEARCH:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'research')
+            elif node.node_type == NodeType.CONSULT:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'consult')
+            elif node.node_type == NodeType.MARKET:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'market')
+            elif node.node_type == NodeType.VISUALIZER:
+                result = await self._execute_v2_domain(ctx, node, upstream_data, 'visualizer')
             else:
                 raise ValueError(f"Άγνωστος τύπος node: {node.node_type}")
 
             ctx.node_outputs[node.alias] = result
             ctx.log(node.alias, "SUCCESS", f"Επιτυχής εκτέλεση", result)
 
+            # End profiling on success
+            if self.profiler:
+                # Estimate cost for LLM nodes (simplified)
+                cost = 0.0
+                tokens = 0
+                api_calls = 0
+                if node.node_type.value == "llm":
+                    # Rough estimate: $0.01 per 1K tokens, assume ~500 tokens per call
+                    tokens = 500
+                    cost = 0.005
+                    api_calls = 1
+                self.profiler.end_node(node.alias, cost=cost, tokens=tokens, api_calls=api_calls, status="success")
+
+            # Record debugger snapshot at node end
+            if self.debugger:
+                node_start_time = None
+                for log_entry in ctx.execution_log:
+                    if log_entry.get("node") == node.alias and log_entry.get("status") == "START":
+                        from datetime import datetime
+                        node_start_time = datetime.fromisoformat(log_entry["timestamp"])
+                        break
+
+                duration = 0.0
+                if node_start_time:
+                    duration = (datetime.now() - node_start_time).total_seconds()
+
+                self.debugger.record_node_end(
+                    node_name=node.alias,
+                    node_type=node.node_type.value,
+                    output_data={"result": result},
+                    context={"node_outputs": dict(ctx.node_outputs), "inputs": dict(ctx.inputs)},
+                    duration=duration
+                )
+
         except Exception as e:
             ctx.log(node.alias, "ERROR", f"Σφάλμα: {str(e)}")
+
+            # End profiling on error
+            if self.profiler:
+                self.profiler.end_node(node.alias, status="error", error_message=str(e))
+
+            # Record debugger error
+            if self.debugger:
+                self.debugger.record_node_error(
+                    node_name=node.alias,
+                    node_type=node.node_type.value,
+                    error=str(e),
+                    context={"node_outputs": dict(ctx.node_outputs), "inputs": dict(ctx.inputs)}
+                )
+
             raise
 
     def _get_upstream_data(self, ctx: ExecutionContext, node: Node) -> Dict[str, Any]:
@@ -691,3 +779,53 @@ class AetherRuntime:
             }
             for ctx in self.execution_history
         ]
+
+    async def _execute_v2_domain(self, ctx, node, data, domain):
+        params = node.params
+        query = data.get("query", data.get("message", ctx.inputs.get("query", "")))
+        upstream_text = str(data)[:2000]
+        cuisine = str(params.get("cuisine", "greek"))
+        difficulty = str(params.get("difficulty", "medium"))
+        servings = str(params.get("servings", 4))
+
+        # Use enhanced V2 prompts from v2_prompts.py
+        base_prompt = V2_PROMPTS.get(domain, domain + " analysis")
+        
+        # Add dynamic context
+        context_parts = [base_prompt]
+        if domain == "chef":
+            context_parts.append("Cuisine: " + cuisine + ", Difficulty: " + difficulty + ", Servings: " + servings + ".")
+        if domain == "molecular":
+            context_parts.append("Complexity: " + str(params.get("complexity", "advanced")) + ".")
+        if domain == "consult":
+            context_parts.append("Domain: " + str(params.get("domain", "business")) + ", Framework: " + str(params.get("framework", "SWOT")) + ".")
+        if domain == "market":
+            context_parts.append("Scope: " + str(params.get("scope", "global")) + ", Timeframe: " + str(params.get("timeframe", "6months")) + ".")
+        if domain == "oracle":
+            context_parts.append("Timeframe: " + str(params.get("timeframe", "6months")) + ".")
+        if domain == "research":
+            context_parts.append("Depth: " + str(params.get("depth", "comprehensive")) + ".")
+        if domain == "balance":
+            context_parts.append("Focus: " + str(params.get("focus", "both")) + ".")
+        
+        context_parts.append("Query: " + str(query))
+        if upstream_text and len(upstream_text) > 10:
+            context_parts.append("Context from previous nodes: " + upstream_text[:1500])
+        
+        prompt = " ".join(context_parts)
+        system_msg = "You are AetherLang " + domain + " node. Provide detailed, professional output."
+
+        try:
+            response = await self.openai_client.chat.completions.create(
+                model=params.get("model", "gpt-4o-mini"),
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=float(params.get("temp", 0.7)),
+                max_tokens=int(params.get("max_tokens", 3000))
+            )
+            return {"output": response.choices[0].message.content, "domain": domain, "params": dict(params)}
+        except Exception as e:
+            ctx.log(node.alias, "ERROR", str(domain) + " node error: " + str(e))
+            return {"output": "[" + domain.upper() + "] Error: " + str(e), "domain": domain}
