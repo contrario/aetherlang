@@ -27,7 +27,7 @@ const SimpleCodeEditor = ({ value, onChange }) => (
 );
 
 // Use proxy for all requests - bypasses Cloudflare cache
-const API_BASE = '/api';
+const API_BASE = 'https://api.neurodoc.app';
 const ADMIN_KEY = 'NEURODOC-ADMIN-2025-MASTER';
 // Example translations
 const exampleTranslations = {
@@ -903,11 +903,9 @@ export default function AetherLangOmega() {
   using target "neuroaether" version ">=0.2";
   input text query;
   node Guard: guard mode="MODERATE";
-  node Planner: plan steps=3;
   node Chef: chef cuisine="greek", difficulty="medium", servings=4;
-  node Summary: summarize length="detailed";
-  Guard -> Planner -> Chef -> Summary;
-  output text recipe from Summary;
+  Guard -> Chef;
+  output text recipe from Chef;
 }`,
       safe_chat: `flow SafeChat {
   using target "neuroaether" version ">=0.2";
@@ -924,7 +922,6 @@ export default function AetherLangOmega() {
   node Research: research depth="comprehensive";
   node Consult: consult domain="business", framework="swot";
   node Market: market scope="global", timeframe="6months";
-  node Summary: summarize length="detailed";
   Guard -> Research -> Consult -> Market -> Summary;
   output text report from Summary;
 }`,

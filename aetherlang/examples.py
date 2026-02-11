@@ -156,56 +156,6 @@ flow EnterpriseDoc {
   output text extracted_data from Transformer;
 }
 """
-    },
-
-    "chef_recipe": {
-        "name": "AI Chef - Συνταγή",
-        "description": "Culinary flow: Guard -> Plan -> Chef -> Summarize",
-        "code": """
-flow RecipeCreator {
-  using target "neuroaether" version ">=0.2";
-  input text query;
-  node Guard: guard mode="MODERATE";
-  node Planner: plan steps=3;
-  node Chef: chef cuisine="greek", difficulty="medium", servings=4;
-  node Summary: summarize length="detailed";
-  Guard -> Planner -> Chef -> Summary;
-  output text recipe from Summary;
-}
-"""
-    },
-
-    "safe_chat": {
-        "name": "Ασφαλής Συνομιλία",
-        "description": "Απλό flow με Guard και LLM για safe chat",
-        "code": """
-flow SafeChat {
-  using target "neuroaether" version ">=0.2";
-  input text message;
-  node Shield: guard mode="STRICT";
-  node Responder: llm model="gpt-4o", temp=0.7;
-  Shield -> Responder;
-  output text reply from Responder;
-}
-"""
-    },
-
-    "market_research": {
-        "name": "Market Analysis",
-        "description": "Research + Consult + Market analysis pipeline",
-        "code": """
-flow MarketResearch {
-  using target "neuroaether" version ">=0.2";
-  input text query;
-  node Guard: guard mode="STRICT";
-  node Research: research depth="comprehensive";
-  node Consult: consult domain="business", framework="swot";
-  node Market: market scope="global", timeframe="6months";
-  node Summary: summarize length="detailed";
-  Guard -> Research -> Consult -> Market -> Summary;
-  output text report from Summary;
-}
-"""
     }
 }
 

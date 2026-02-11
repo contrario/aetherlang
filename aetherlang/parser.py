@@ -48,19 +48,18 @@ class NodeType(Enum):
     ENRICH = "enrich"  # Enrich data with external sources
     SLEEP = "sleep"  # Add delays
     RATE_LIMIT = "rate_limit"  # Rate limiting
-    # NeuroAether v2 - Domain-specific nodes
-    CHEF = "chef"
-    MOLECULAR = "molecular"
-    BALANCE = "balance"
-    VISION = "vision"
-    ASSEMBLY = "assembly"
-    ORACLE = "oracle"
-    APEX = "apex"
-    RESEARCH = "research"
-    CONSULT = "consult"
-    MARKET = "market"
-    VISUALIZER = "visualizer"
-    # NeuroAether v2 - Domain-specific nodes
+    # AI Engine nodes
+    CHEF = "chef"  # Culinary AI
+    MOLECULAR = "molecular"  # Molecular gastronomy
+    ORACLE = "oracle"  # Predictions
+    APEX = "apex"  # Business strategy
+    ASSEMBLY = "assembly"  # Multi-agent panel
+    CONSULTING = "consulting"  # Business consulting
+    MARKETING = "marketing"  # Marketing AI
+    LAB = "lab"  # Scientific research
+    ACADEMIC = "academic"  # Academic analysis
+    VISION = "vision"  # Computer vision
+    BRAIN = "brain"  # General AI
 
 
 @dataclass

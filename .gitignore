@@ -137,3 +137,6 @@ Thumbs.db
 *.db
 *.sqlite
 .aetherlang_cache/
+.env
+__pycache__/
+*.pyc
