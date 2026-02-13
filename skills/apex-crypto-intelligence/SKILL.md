@@ -2,31 +2,58 @@
 
 > Institutional-grade crypto market analysis across 5 exchanges with AI-powered Hyper-Council verdicts and hedge fund-quality PDF reports.
 
-**Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang)
-**Homepage**: [neurodoc.app/aether-nexus-omega-dsl](https://neurodoc.app/aether-nexus-omega-dsl)
+**Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang/tree/main/skills/apex-crypto-intelligence)
+**Homepage**: [neurodoc.app](https://neurodoc.app)
 **Author**: NeuroAether (info@neurodoc.app)
 **License**: MIT
+**Version**: 0.1.0
+
+## Summary
+
+APEX Crypto Intelligence is a multi-exchange cryptocurrency analysis tool that fetches live market data from CoinGecko, Binance, Bybit, KuCoin, MEXC, and Gate.io, performs cross-exchange arbitrage detection, and provides AI-powered institutional trading analysis through a Hyper-Council of 5 specialized agents.
 
 ---
 
 ## Privacy & Data Handling
 
-⚠️ **BYOK (Bring Your Own Keys)**: This skill requires the user to provide their own exchange API keys. Keys are used exclusively for read-only market data retrieval and are never stored, logged, or transmitted to any third party.
+⚠️ **BYOK (Bring Your Own Keys)**: Exchange API keys are used **locally** to fetch data from exchanges. Keys are **never transmitted** to NeuroAether.
 
-⚠️ **External API Notice**: This skill sends analysis queries to the NeuroAether API at `api.neurodoc.app` for AI processing. Only market data and query text are transmitted — never API keys or credentials.
+⚠️ **External API Notice**: Only market data (prices, volumes) and query text are sent to `api.neurodoc.app` for AI analysis.
 
-- **What is sent**: Market data queries and natural language analysis requests
+**Auditable Code**: See [`client.py`](https://github.com/contrario/aetherlang/blob/main/skills/apex-crypto-intelligence/client.py) — the `build_api_request()` function on line 109 shows the **exact payload** sent to the API. Run `python client.py` to inspect the payload before sending.
+
+- **What is sent**: Aggregated market prices and natural language queries only ([verify in client.py line 109](https://github.com/contrario/aetherlang/blob/main/skills/apex-crypto-intelligence/client.py#L109))
 - **What is NOT sent**: Exchange API keys, credentials, personal data, wallet addresses
 - **Data retention**: Queries are processed in real-time and not stored
 - **Hosting**: Hetzner EU servers (GDPR compliant)
 
-**CRITICAL**: Users should configure exchange API keys with **READ-ONLY permissions**. Never enable withdrawal or trading permissions for keys used with this skill.
+**CRITICAL**: Users should configure exchange API keys with **READ-ONLY permissions**. Never enable withdrawal or trading permissions.
+
+---
+
+## Architecture
+```
+User's Machine (local)              NeuroAether API
+┌──────────────────────┐            ┌─────────────────┐
+│                      │            │                  │
+│  Exchange API Keys   │            │  api.neurodoc.app│
+│  (never leave here)  │            │                  │
+│         │            │            │  Receives ONLY:  │
+│         ▼            │            │  - prices        │
+│  Fetch from          │  prices +  │  - volumes       │
+│  Binance/Bybit/etc   │──query──▶ │  - query text    │
+│  (locally)           │            │                  │
+│         │            │            │  Returns:        │
+│         ▼            │  ◀──────── │  - AI analysis   │
+│  Aggregate prices    │  analysis  │  - verdicts      │
+│  (no keys in payload)│            │  - PDF data      │
+│                      │            │                  │
+└──────────────────────┘            └─────────────────┘
+```
 
 ---
 
 ## Overview
-
-APEX Crypto Intelligence provides real-time multi-exchange crypto market data, cross-exchange price comparison with arbitrage detection, and AI-powered institutional analysis through a Hyper-Council of 5 specialized AI agents.
 
 ### Key Features
 
@@ -50,18 +77,16 @@ None required. The skill works without any keys using CoinGecko free tier.
 
 | Variable | Exchange | Purpose |
 |----------|----------|---------|
-| `BINANCE_API_KEY` | Binance | Market data, orderbook |
+| `BINANCE_API_KEY` | Binance | Market data (read-only) |
 | `BINANCE_API_SECRET` | Binance | API authentication |
-| `BYBIT_API_KEY` | Bybit | Market data, orderbook |
+| `BYBIT_API_KEY` | Bybit | Market data (read-only) |
 | `BYBIT_API_SECRET` | Bybit | API authentication |
-| `KUCOIN_API_KEY` | KuCoin | Market data, orderbook |
+| `KUCOIN_API_KEY` | KuCoin | Market data (read-only) |
 | `KUCOIN_API_SECRET` | KuCoin | API authentication |
-| `MEXC_API_KEY` | MEXC | Market data, orderbook |
+| `MEXC_API_KEY` | MEXC | Market data (read-only) |
 | `MEXC_API_SECRET` | MEXC | API authentication |
-| `GATEIO_API_KEY` | Gate.io | Market data, orderbook |
+| `GATEIO_API_KEY` | Gate.io | Market data (read-only) |
 | `GATEIO_API_SECRET` | Gate.io | API authentication |
-
-**Security Note**: Always create API keys with **read-only** permissions. This skill never executes trades, transfers, or withdrawals.
 
 ---
 
@@ -79,11 +104,6 @@ Content-Type: application/json
 }
 ```
 
-**Response includes:**
-- CoinGecko market data (price, 24h/7d change, MCap, volume, ATH)
-- Per-exchange bid/ask/spread/volume from configured exchanges
-- Arbitrage opportunities with percentage and absolute spread
-
 ### 2. APEX Hyper-Council Analysis
 ```json
 {
@@ -91,13 +111,6 @@ Content-Type: application/json
   "query": "Full APEX analysis for BTC ETH SOL"
 }
 ```
-
-**Response includes:**
-- Market regime classification (BULL/BEAR/CHOP/TRANSITION)
-- Per-coin verdict (LONG/SHORT/NEUTRAL/WAIT) with conviction level
-- Support/Resistance levels
-- Hyper-Council views (Macro, Quant, Risk Damocles, Regime)
-- Actionable trading plan with entry/exit/risk management
 
 ### 3. Trading Blueprint PDF
 ```json
@@ -107,27 +120,18 @@ Content-Type: application/json
 }
 ```
 
-**Response includes downloadable PDF with:**
-- Executive Summary
-- SWOT Analysis (chart)
-- Projected PnL Profile (bar chart)
-- Strategy Capability Radar (radar chart)
-- Hyper-Council Agent Reports (5 agents with sentiment/weight/reasoning)
-- Consensus Engine Score
-- Implementation Roadmap
-
 ---
 
 ## Supported Exchanges
 
 | Exchange | Data Available | Auth Required |
 |----------|---------------|---------------|
-| CoinGecko | Price, MCap, Volume, ATH, 24h/7d change | No (free tier) |
-| Binance | Bid/Ask, Spread, 24h Volume, High/Low | Optional |
-| Bybit | Bid/Ask, Spread, 24h Volume, High/Low | Optional |
-| KuCoin | Bid/Ask, Spread, Volume | Optional |
-| MEXC | Bid/Ask, Spread, 24h Volume, Trades | Optional |
-| Gate.io | Bid/Ask, Spread, 24h Volume, Change% | Optional |
+| CoinGecko | Price, MCap, Volume, ATH | No (free tier) |
+| Binance | Bid/Ask, Spread, Volume | Optional |
+| Bybit | Bid/Ask, Spread, Volume | Optional |
+| KuCoin | Bid/Ask, Spread | Optional |
+| MEXC | Bid/Ask, Spread, Volume | Optional |
+| Gate.io | Bid/Ask, Spread, Volume | Optional |
 
 ---
 
@@ -141,22 +145,15 @@ Content-Type: application/json
 | RISK (Damocles) | Chief Risk Officer | -100 to +100 | **Yes** |
 | EXECUTION | Execution Architect | 0 (INFO) | No |
 
-### Consensus Engine
-
-- Raw score = sum of all agent weights
-- Status: `ALPHA_GO` (strong buy) | `HOLD` | `WAIT` | `VETOED` (Damocles veto)
-- Veto: If RISK agent sentiment = "VETO", trade is blocked regardless of score
-
 ---
 
 ## Security Architecture
 
-Source code: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang/blob/main/aetherlang/middleware/security.py)
+**Auditable source**: [`client.py`](https://github.com/contrario/aetherlang/blob/main/skills/apex-crypto-intelligence/client.py) — inspect `build_api_request()` to verify exact payload.
 
-### Key Security Principles
-- **BYOK**: User keys stay on user's machine, never transmitted to NeuroAether
+- **BYOK**: User keys stay local, never transmitted to NeuroAether
 - **Read-only**: Skill only reads market data, never executes trades
-- **No storage**: API keys are used per-request and never persisted server-side
+- **No storage**: API keys used per-request, never persisted
 - **Input validation**: All queries sanitized, max 5000 chars
 - **Rate limiting**: 100 req/hour free tier
 
@@ -164,42 +161,7 @@ Source code: [github.com/contrario/aetherlang](https://github.com/contrario/aeth
 - ❌ Execute trades or place orders
 - ❌ Transfer funds or make withdrawals
 - ❌ Store or log API keys
-- ❌ Access wallet balances (unless explicitly requested)
-- ❌ Provide financial advice (analysis only, with disclaimers)
-
----
-
-## Response Structure
-```json
-{
-  "status": "success",
-  "result": {
-    "market_data": { "coins": [...] },
-    "exchange_data": {
-      "binance": { "bid": 66144.87, "ask": 66144.88, "volume_usdt": 1639000000 },
-      "bybit": { "bid": 66142.50, "ask": 66142.60 },
-      "kucoin": { "bid": 66144.80, "ask": 66144.90 },
-      "mexc": { "bid": 66133.30, "ask": 66138.95 },
-      "gateio": { "bid": 66151.70, "ask": 66151.80 }
-    },
-    "arbitrage": {
-      "best_buy": "MEXC",
-      "best_sell": "Gate.io",
-      "spread_pct": 0.019,
-      "spread_usd": 12.75
-    },
-    "analysis": { "regime": "BULLISH", "verdict": "HOLD", "consensus_score": 72 }
-  }
-}
-```
-
-## Error Responses
-
-| Code | Meaning |
-|------|---------|
-| 400 | Invalid input |
-| 429 | Rate limit exceeded |
-| 500 | Server error |
+- ❌ Provide financial advice (analysis only)
 
 ---
 
@@ -220,7 +182,7 @@ Source code: [github.com/contrario/aetherlang](https://github.com/contrario/aeth
 
 ## Disclaimer
 
-⚠️ This skill provides AI-generated market analysis for educational and informational purposes only. It is NOT financial advice. Cryptocurrency trading involves significant risk. Always conduct your own research (DYOR) and consult with a qualified financial advisor before making investment decisions. Past performance does not guarantee future results.
+⚠️ This skill provides AI-generated market analysis for educational and informational purposes only. It is NOT financial advice. Cryptocurrency trading involves significant risk. Always conduct your own research and consult a qualified financial advisor before making investment decisions.
 
 ---
 *Built by NeuroAether — Institutional Intelligence for Everyone* 🧠📊
