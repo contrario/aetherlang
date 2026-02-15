@@ -653,7 +653,7 @@ export default function AetherLangOmega() {
         withCredentials: true
       });
       setUserTier(response.data.tier);
-      setUsageStats(response.data.rate_limit);
+      if (response.data.rate_limit) setUsageStats(response.data.rate_limit);
     } catch (error) {
       console.error('Failed to fetch usage stats:', error);
     }
