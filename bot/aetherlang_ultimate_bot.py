@@ -4,7 +4,7 @@
 ║        AETHERLANG Ω — ULTIMATE TELEGRAM BOT v2.0 MEGA          ║
 ║   The Technological Showcase of NeuroAether Intelligence         ║
 ║                                                                  ║
-║  🧠 12 AI Engines  •  40+ Archetypes  •  16 API Integrations   ║
+║  🧠 15 AI Engines  •  40+ Archetypes  •  16 API Integrations   ║
 ║  🔄 OpenRouter  •  🍽️ FDA Safety  •  🎰 LIVE OPAP API         ║
 ║  🌐 Full Greek/English  •  📊 Live Markets  •  🔬 Nobel Mode   ║
 ║                                                                  ║
@@ -103,6 +103,16 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:9999")
 OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
 FDA_API_KEY = os.getenv("FDA_API_KEY", "")
+MEXC_API_KEY = os.getenv("MEXC_API_KEY", "")
+MEXC_API_SECRET = os.getenv("MEXC_API_SECRET", "")
+GATEIO_API_KEY = os.getenv("GATEIO_API_KEY", "")
+GATEIO_API_SECRET = os.getenv("GATEIO_API_SECRET", "")
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "")
+BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
+BYBIT_API_KEY = os.getenv("BYBIT_API_KEY", "")
+BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET", "")
+KUCOIN_API_KEY = os.getenv("KUCOIN_API_KEY", "")
+KUCOIN_API_SECRET = os.getenv("KUCOIN_API_SECRET", "")
 SERPER_KEY = os.getenv("SERPER_API_KEY", "")
 ALLOWED_USERS = [int(x) for x in os.getenv("ALLOWED_USERS", "").split(",") if x.strip()]
 
@@ -144,6 +154,8 @@ log = logging.getLogger("AetherLangBot")
 # ═══════════════════════════════════════════════════════════════
 
 user_language_prefs: Dict[int, str] = {}  # user_id -> "el" or "en"
+_photo_buffer: Dict[str, dict] = {}  # media_group_id -> {chat_id, photos, caption, task}
+user_last_response: Dict[int, dict] = {}  # user_id -> {"text": ..., "engine": ..., "query": ...}
 
 # ═══════════════════════════════════════════════════════════════
 #  LANGUAGE INSTRUCTION GENERATOR (from NeuroAether backend)
@@ -586,6 +598,551 @@ Respond in JSON — ΥΠΟΧΡΕΩΤΙΚΟ FORMAT:
 ΠΟΤΕ μην γράψεις μόνο κείμενο αντί για αριθμούς. ΠΑΝΤΑ 3 σετ αριθμών."""
 
 
+
+# ═══════════════════════════════════════════════════════════════
+#  CRYPTO INTELLIGENCE ENGINE — CoinGecko + APEX Analysis
+# ═══════════════════════════════════════════════════════════════
+
+CRYPTO_ALIASES = {
+    "bitcoin": "bitcoin", "btc": "bitcoin", "μπιτκοιν": "bitcoin",
+    "ethereum": "ethereum", "eth": "ethereum", "ether": "ethereum",
+    "solana": "solana", "sol": "solana",
+    "ripple": "ripple", "xrp": "ripple",
+    "dogecoin": "dogecoin", "doge": "dogecoin",
+    "cardano": "cardano", "ada": "cardano",
+    "polkadot": "polkadot", "dot": "polkadot",
+    "avalanche": "avalanche-2", "avax": "avalanche-2",
+    "polygon": "matic-network", "matic": "matic-network",
+    "bnb": "binancecoin", "binance": "binancecoin",
+    "litecoin": "litecoin", "ltc": "litecoin",
+    "chainlink": "chainlink", "link": "chainlink",
+    "tron": "tron", "trx": "tron",
+    "shiba": "shiba-inu", "shib": "shiba-inu",
+    "pepe": "pepe", "sui": "sui", "apt": "aptos", "aptos": "aptos",
+    "ton": "the-open-network", "toncoin": "the-open-network",
+    "near": "near", "uni": "uniswap", "uniswap": "uniswap",
+}
+
+def detect_crypto_coins(text: str) -> list:
+    """Detect which cryptocurrencies are mentioned in the query"""
+    text_lower = text.lower()
+    found = []
+    for alias, coin_id in CRYPTO_ALIASES.items():
+        if alias in text_lower and coin_id not in found:
+            found.append(coin_id)
+    # Default to top coins if none detected
+    if not found:
+        found = ["bitcoin", "ethereum", "solana", "ripple", "cardano"]
+    return found[:10]
+
+async def fetch_coingecko_data(coin_ids: list) -> dict:
+    """Fetch live crypto data from CoinGecko FREE API"""
+    try:
+        client = await get_client()
+        ids_str = ",".join(coin_ids)
+        url = f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids={ids_str}&order=market_cap_desc&sparkline=false&price_change_percentage=1h,24h,7d"
+        r = await client.get(url, timeout=15)
+        if r.status_code == 200:
+            return {"coins": r.json(), "source": "coingecko"}
+        else:
+            log.warning(f"CoinGecko error: {r.status_code}")
+            return {"coins": [], "error": f"CoinGecko HTTP {r.status_code}"}
+    except Exception as e:
+        log.error(f"CoinGecko fetch error: {e}")
+        return {"coins": [], "error": str(e)}
+
+
+# MEXC symbol mapping (CoinGecko ID -> MEXC pair)
+MEXC_SYMBOLS = {
+    "bitcoin": "BTCUSDT", "ethereum": "ETHUSDT", "solana": "SOLUSDT",
+    "ripple": "XRPUSDT", "dogecoin": "DOGEUSDT", "cardano": "ADAUSDT",
+    "polkadot": "DOTUSDT", "avalanche-2": "AVAXUSDT", "matic-network": "MATICUSDT",
+    "binancecoin": "BNBUSDT", "litecoin": "LTCUSDT", "chainlink": "LINKUSDT",
+    "tron": "TRXUSDT", "shiba-inu": "SHIBUSDT", "sui": "SUIUSDT",
+    "aptos": "APTUSDT", "the-open-network": "TONUSDT", "near": "NEARUSDT",
+    "uniswap": "UNIUSDT", "pepe": "PEPEUSDT",
+}
+
+GATEIO_SYMBOLS = {
+    "bitcoin": "BTC_USDT", "ethereum": "ETH_USDT", "solana": "SOL_USDT",
+    "ripple": "XRP_USDT", "dogecoin": "DOGE_USDT", "cardano": "ADA_USDT",
+    "polkadot": "DOT_USDT", "avalanche-2": "AVAX_USDT", "matic-network": "MATIC_USDT",
+    "binancecoin": "BNB_USDT", "litecoin": "LTC_USDT", "chainlink": "LINK_USDT",
+    "tron": "TRX_USDT", "shiba-inu": "SHIB_USDT", "sui": "SUI_USDT",
+    "aptos": "APT_USDT", "the-open-network": "TON_USDT", "near": "NEAR_USDT",
+    "uniswap": "UNI_USDT", "pepe": "PEPE_USDT",
+}
+
+async def fetch_mexc_ticker(coin_id: str) -> dict:
+    """Fetch ticker from MEXC API (public, no auth needed for ticker)"""
+    symbol = MEXC_SYMBOLS.get(coin_id)
+    if not symbol:
+        return {}
+    try:
+        client = await get_client()
+        url = f"https://api.mexc.com/api/v3/ticker/24hr?symbol={symbol}"
+        r = await client.get(url, timeout=10)
+        if r.status_code == 200:
+            d = r.json()
+            return {
+                "exchange": "MEXC",
+                "symbol": symbol,
+                "bid": float(d.get("bidPrice") or 0),
+                "ask": float(d.get("askPrice") or 0),
+                "spread": round(float(d.get("askPrice") or 0) - float(d.get("bidPrice") or 0), 4),
+                "volume_usdt": float(d.get("quoteVolume") or 0),
+                "trades_24h": int(d.get("count") or 0),
+                "high_24h": float(d.get("highPrice") or 0),
+                "low_24h": float(d.get("lowPrice") or 0),
+            }
+    except Exception as e:
+        log.warning(f"MEXC ticker error for {coin_id}: {e}")
+    return {}
+
+async def fetch_gateio_ticker(coin_id: str) -> dict:
+    """Fetch ticker from Gate.io API (public endpoint)"""
+    symbol = GATEIO_SYMBOLS.get(coin_id)
+    if not symbol:
+        return {}
+    try:
+        client = await get_client()
+        url = f"https://api.gateio.ws/api/v4/spot/tickers?currency_pair={symbol}"
+        r = await client.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            if data and len(data) > 0:
+                d = data[0]
+                return {
+                    "exchange": "Gate.io",
+                    "symbol": symbol,
+                    "bid": float(d.get("highest_bid", 0)),
+                    "ask": float(d.get("lowest_ask", 0)),
+                    "spread": round(float(d.get("lowest_ask", 0)) - float(d.get("highest_bid", 0)), 4),
+                    "volume_usdt": float(d.get("quote_volume", 0)),
+                    "high_24h": float(d.get("high_24h", 0)),
+                    "low_24h": float(d.get("low_24h", 0)),
+                    "change_pct": float(d.get("change_percentage", 0)),
+                }
+    except Exception as e:
+        log.warning(f"Gate.io ticker error for {coin_id}: {e}")
+    return {}
+
+
+BINANCE_SYMBOLS = {
+    "bitcoin": "BTCUSDT", "ethereum": "ETHUSDT", "solana": "SOLUSDT",
+    "ripple": "XRPUSDT", "dogecoin": "DOGEUSDT", "cardano": "ADAUSDT",
+    "polkadot": "DOTUSDT", "avalanche-2": "AVAXUSDT", "matic-network": "MATICUSDT",
+    "binancecoin": "BNBUSDT", "litecoin": "LTCUSDT", "chainlink": "LINKUSDT",
+    "tron": "TRXUSDT", "shiba-inu": "SHIBUSDT", "sui": "SUIUSDT",
+    "aptos": "APTUSDT", "the-open-network": "TONUSDT", "near": "NEARUSDT",
+    "uniswap": "UNIUSDT", "pepe": "PEPEUSDT",
+}
+
+BYBIT_SYMBOLS = dict(BINANCE_SYMBOLS)  # Same format
+
+KUCOIN_SYMBOLS = {
+    "bitcoin": "BTC-USDT", "ethereum": "ETH-USDT", "solana": "SOL-USDT",
+    "ripple": "XRP-USDT", "dogecoin": "DOGE-USDT", "cardano": "ADA-USDT",
+    "polkadot": "DOT-USDT", "avalanche-2": "AVAX-USDT", "matic-network": "MATIC-USDT",
+    "binancecoin": "BNB-USDT", "litecoin": "LTC-USDT", "chainlink": "LINK-USDT",
+    "tron": "TRX-USDT", "shiba-inu": "SHIB-USDT", "sui": "SUI-USDT",
+    "aptos": "APT-USDT", "the-open-network": "TON-USDT", "near": "NEAR-USDT",
+    "uniswap": "UNI-USDT", "pepe": "PEPE-USDT",
+}
+
+async def fetch_binance_ticker(coin_id: str) -> dict:
+    """Fetch ticker from Binance"""
+    symbol = BINANCE_SYMBOLS.get(coin_id)
+    if not symbol:
+        return {}
+    try:
+        client = await get_client()
+        r = await client.get(f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}", timeout=10)
+        if r.status_code == 200:
+            d = r.json()
+            return {
+                "exchange": "Binance",
+                "symbol": symbol,
+                "bid": float(d.get("bidPrice") or 0),
+                "ask": float(d.get("askPrice") or 0),
+                "spread": round(float(d.get("askPrice") or 0) - float(d.get("bidPrice") or 0), 4),
+                "volume_usdt": float(d.get("quoteVolume") or 0),
+                "high_24h": float(d.get("highPrice") or 0),
+                "low_24h": float(d.get("lowPrice") or 0),
+            }
+    except Exception as e:
+        log.warning(f"Binance error for {coin_id}: {e}")
+    return {}
+
+async def fetch_bybit_ticker(coin_id: str) -> dict:
+    """Fetch ticker from Bybit"""
+    symbol = BYBIT_SYMBOLS.get(coin_id)
+    if not symbol:
+        return {}
+    try:
+        client = await get_client()
+        r = await client.get(f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={symbol}", timeout=10)
+        if r.status_code == 200:
+            d = r.json()
+            items = d.get("result", {}).get("list", [])
+            if items:
+                t = items[0]
+                bid = float(t.get("bid1Price") or 0)
+                ask = float(t.get("ask1Price") or 0)
+                return {
+                    "exchange": "Bybit",
+                    "symbol": symbol,
+                    "bid": bid,
+                    "ask": ask,
+                    "spread": round(ask - bid, 4),
+                    "volume_usdt": float(t.get("turnover24h") or 0),
+                    "high_24h": float(t.get("highPrice24h") or 0),
+                    "low_24h": float(t.get("lowPrice24h") or 0),
+                }
+    except Exception as e:
+        log.warning(f"Bybit error for {coin_id}: {e}")
+    return {}
+
+async def fetch_kucoin_ticker(coin_id: str) -> dict:
+    """Fetch ticker from KuCoin"""
+    symbol = KUCOIN_SYMBOLS.get(coin_id)
+    if not symbol:
+        return {}
+    try:
+        client = await get_client()
+        r = await client.get(f"https://api.kucoin.com/api/v1/market/orderbook/level1?symbol={symbol}", timeout=10)
+        if r.status_code == 200:
+            d = r.json().get("data", {})
+            if d:
+                bid = float(d.get("bestBid") or 0)
+                ask = float(d.get("bestAsk") or 0)
+                return {
+                    "exchange": "KuCoin",
+                    "symbol": symbol,
+                    "bid": bid,
+                    "ask": ask,
+                    "spread": round(ask - bid, 4),
+                    "volume_usdt": 0,
+                }
+        # Get volume separately
+        r2 = await client.get(f"https://api.kucoin.com/api/v1/market/stats?symbol={symbol}", timeout=10)
+        if r2.status_code == 200:
+            d2 = r2.json().get("data", {})
+            result = {
+                "exchange": "KuCoin",
+                "symbol": symbol,
+                "bid": float(d2.get("buy") or 0),
+                "ask": float(d2.get("sell") or 0),
+                "spread": round(float(d2.get("sell") or 0) - float(d2.get("buy") or 0), 4),
+                "volume_usdt": float(d2.get("volValue") or 0),
+                "high_24h": float(d2.get("high") or 0),
+                "low_24h": float(d2.get("low") or 0),
+            }
+            return result
+    except Exception as e:
+        log.warning(f"KuCoin error for {coin_id}: {e}")
+    return {}
+
+
+async def fetch_exchange_data(coin_ids: list) -> dict:
+    """Fetch data from ALL 5 exchanges for comparison"""
+    import asyncio as aio
+    results = {}
+    exchanges = ["binance", "bybit", "kucoin", "mexc", "gateio"]
+    fetchers = {
+        "binance": fetch_binance_ticker,
+        "bybit": fetch_bybit_ticker,
+        "kucoin": fetch_kucoin_ticker,
+        "mexc": fetch_mexc_ticker,
+        "gateio": fetch_gateio_ticker,
+    }
+    
+    tasks = []
+    task_map = []  # (coin_id, exchange_name)
+    for coin_id in coin_ids[:5]:
+        for ex_name, fetcher in fetchers.items():
+            tasks.append(fetcher(coin_id))
+            task_map.append((coin_id, ex_name))
+    
+    all_results = await aio.gather(*tasks, return_exceptions=True)
+    
+    for idx, (coin_id, ex_name) in enumerate(task_map):
+        data = all_results[idx] if not isinstance(all_results[idx], Exception) else {}
+        if data:
+            if coin_id not in results:
+                results[coin_id] = {}
+            results[coin_id][ex_name] = data
+    
+    return results
+
+def format_exchange_table(exchange_data: dict, lang: str = "el") -> str:
+    """Format 5-exchange comparison table with arbitrage scanner"""
+    if not exchange_data:
+        return ""
+    
+    ex_icons = {"binance": "🟡", "bybit": "🟠", "kucoin": "🟢", "mexc": "🟦", "gateio": "🟨"}
+    ex_names = {"binance": "Binance", "bybit": "Bybit", "kucoin": "KuCoin", "mexc": "MEXC", "gateio": "Gate.io"}
+    
+    lines = ["\n🏦 <b>Cross-Exchange Scanner (5 Exchanges)</b>\n"]
+    
+    for coin_id, data in exchange_data.items():
+        # Get symbol from any exchange
+        any_ex = next((d for d in data.values() if d), {})
+        symbol = any_ex.get("symbol", coin_id).replace("_USDT", "").replace("USDT", "").replace("-USDT", "").replace("_", "").replace("-", "")
+        
+        lines.append(f"<b>{symbol}:</b>")
+        
+        # Collect all prices for arbitrage
+        prices = []
+        
+        for ex_key in ["binance", "bybit", "kucoin", "mexc", "gateio"]:
+            ex = data.get(ex_key, {})
+            if ex and ex.get("bid", 0) > 0:
+                bid = ex["bid"]
+                ask = ex["ask"]
+                spread = ex.get("spread", 0)
+                vol = ex.get("volume_usdt", 0)
+                icon = ex_icons.get(ex_key, "⚪")
+                name = ex_names.get(ex_key, ex_key)
+                
+                vol_str = f"${vol/1e6:.0f}M" if vol > 1e6 else f"${vol:,.0f}" if vol > 0 else ""
+                vol_part = f" | Vol: {vol_str}" if vol_str else ""
+                
+                if bid >= 1000:
+                    lines.append(f"  {icon} {name}: ${bid:,.2f} / ${ask:,.2f}{vol_part}")
+                elif bid >= 1:
+                    lines.append(f"  {icon} {name}: ${bid:,.4f} / ${ask:,.4f}{vol_part}")
+                else:
+                    lines.append(f"  {icon} {name}: ${bid:,.6f} / ${ask:,.6f}{vol_part}")
+                
+                prices.append({"ex": name, "bid": bid, "ask": ask})
+        
+        # Arbitrage detection
+        if len(prices) >= 2:
+            cheapest = min(prices, key=lambda x: x["ask"])
+            expensive = max(prices, key=lambda x: x["bid"])
+            
+            if cheapest["ask"] > 0:
+                arb_pct = ((expensive["bid"] - cheapest["ask"]) / cheapest["ask"]) * 100
+                spread_abs = expensive["bid"] - cheapest["ask"]
+                
+                if arb_pct > 0.01:
+                    lines.append(f"  💰 <b>Buy {cheapest['ex']} → Sell {expensive['ex']}: {arb_pct:.3f}% (${spread_abs:,.2f})</b>")
+                elif arb_pct > -0.01:
+                    lines.append(f"  ⚖️ Spread tight — no clear arb")
+        lines.append("")
+    
+    return "\n".join(lines)
+
+def format_exchange_context(exchange_data: dict) -> str:
+    """Format exchange data for LLM context"""
+    if not exchange_data:
+        return ""
+    ex_names = {"binance": "Binance", "bybit": "Bybit", "kucoin": "KuCoin", "mexc": "MEXC", "gateio": "Gate.io"}
+    lines = ["\nCROSS-EXCHANGE DATA (5 exchanges):"]
+    for coin_id, data in exchange_data.items():
+        any_ex = next((d for d in data.values() if d), {})
+        sym = any_ex.get("symbol", coin_id)
+        lines.append(f"  {sym}:")
+        for ex_key in ["binance", "bybit", "kucoin", "mexc", "gateio"]:
+            ex = data.get(ex_key, {})
+            if ex:
+                name = ex_names.get(ex_key, ex_key)
+                lines.append(f"    {name}: bid={ex.get('bid')} ask={ex.get('ask')} spread={ex.get('spread')} vol=${ex.get('volume_usdt',0):,.0f}")
+    return "\n".join(lines)
+
+
+def format_crypto_context(data: dict) -> str:
+    """Format crypto data for LLM context"""
+    coins = data.get("coins", [])
+    if not coins:
+        return "No live data available."
+    lines = ["LIVE CRYPTOCURRENCY MARKET DATA (CoinGecko):"]
+    lines.append(f"{'Coin':<12} {'Price':>12} {'24h%':>8} {'7d%':>8} {'MCap':>15} {'Vol24h':>15}")
+    lines.append("-" * 75)
+    for c in coins:
+        symbol = c.get("symbol", "").upper()
+        price = c.get("current_price", 0)
+        ch24 = c.get("price_change_percentage_24h", 0) or 0
+        ch7d = c.get("price_change_percentage_7d_in_currency", 0) or 0
+        mcap = c.get("market_cap", 0) or 0
+        vol = c.get("total_volume", 0) or 0
+        price_str = f"${price:,.2f}" if price < 10 else f"${price:,.0f}" if price > 100 else f"${price:,.2f}"
+        mcap_str = f"${mcap/1e9:.1f}B" if mcap > 1e9 else f"${mcap/1e6:.0f}M"
+        vol_str = f"${vol/1e9:.1f}B" if vol > 1e9 else f"${vol/1e6:.0f}M"
+        lines.append(f"{symbol:<12} {price_str:>12} {ch24:>+7.1f}% {ch7d:>+7.1f}% {mcap_str:>15} {vol_str:>15}")
+    return "\n".join(lines)
+
+def format_crypto_table(data: dict, lang: str = "el") -> str:
+    """Format crypto prices as Telegram table"""
+    coins = data.get("coins", [])
+    if not coins:
+        return "📊 No crypto data available."
+    lines = ["📊 <b>APEX Crypto Intelligence — Live Market</b>\n"]
+    for c in coins:
+        symbol = c.get("symbol", "").upper()
+        name = c.get("name", "")
+        price = c.get("current_price", 0)
+        ch24 = c.get("price_change_percentage_24h", 0) or 0
+        ch7d = c.get("price_change_percentage_7d_in_currency", 0) or 0
+        mcap = c.get("market_cap", 0) or 0
+        vol = c.get("total_volume", 0) or 0
+        ath = c.get("ath", 0) or 0
+        ath_pct = c.get("ath_change_percentage", 0) or 0
+        rank = c.get("market_cap_rank", "?")
+        # Price formatting
+        if price >= 1000:
+            p_str = f"${price:,.0f}"
+        elif price >= 1:
+            p_str = f"${price:,.2f}"
+        else:
+            p_str = f"${price:,.4f}"
+        # Change emoji
+        e24 = "🟢" if ch24 >= 0 else "🔴"
+        e7d = "🟢" if ch7d >= 0 else "🔴"
+        # Market cap
+        mcap_str = f"${mcap/1e9:.1f}B" if mcap > 1e9 else f"${mcap/1e6:.0f}M"
+        vol_str = f"${vol/1e9:.1f}B" if vol > 1e9 else f"${vol/1e6:.0f}M"
+        lines.append(f"<b>#{rank} {symbol}</b> — {esc(name)}")
+        lines.append(f"  💰 {p_str}")
+        lines.append(f"  {e24} 24h: {ch24:+.1f}% | {e7d} 7d: {ch7d:+.1f}%")
+        lines.append(f"  📈 MCap: {mcap_str} | Vol: {vol_str}")
+        if ath > 0:
+            lines.append(f"  🏔️ ATH: ${ath:,.0f} ({ath_pct:.0f}%)")
+        lines.append("")
+    lines.append(f"⏰ {time.strftime('%H:%M UTC', time.gmtime())}")
+    return "\n".join(lines)
+
+def build_crypto_prompt(lang: str, crypto_data: str = "") -> str:
+    """APEX Crypto Trading Intelligence prompt"""
+    lang_inst = get_language_instruction(lang)
+    return f"""{lang_inst}
+
+IDENTITY: NEUROAETHER APEX CRYPTO INTELLIGENCE — Institutional Trading Analyst
+
+YOU HAVE REAL-TIME MARKET DATA. The user's message contains LIVE prices from CoinGecko.
+You MUST analyze this data. NEVER say you cannot provide prices — THE DATA IS IN THE USER MESSAGE.
+
+You are the APEX Crypto Intelligence Engine — a Hyper-Council of:
+- Hedge Fund CIO (macro & portfolio strategy)
+- Head of Quant Research (signals, backtests, risk models)  
+- Chief Risk Officer Damocles (downside protection)
+- Market Regime Classifier (bull/bear/chop detection)
+
+MANDATORY RULES:
+1. USE the real-time data from the user message — prices, volumes, changes are ALL there
+2. Give SPECIFIC price levels for support/resistance based on the actual prices
+3. Include conviction level (LOW/MEDIUM/HIGH)
+4. Include risk assessment with specific scenarios
+5. Be institutional and analytical, never casual
+
+You MUST respond with ONLY valid JSON (no markdown, no backticks, no explanation before/after):
+
+The JSON must have these exact keys:
+- "market_overview" with "regime", "sentiment", "key_narrative"
+- "coin_analysis" array with objects having "symbol", "verdict", "conviction", "support", "resistance", "key_insight", "risk_warning"
+- "hyper_council" with "macro_view", "quant_signal", "risk_assessment", "regime_status"
+- "action_plan" with "primary_trade", "entry_logic", "risk_management", "time_horizon"
+- "disclaimer" with responsible trading warning
+
+CRITICAL: Respond with ONLY the JSON object. No text before or after."""
+
+
+
+BLUEPRINT_SYSTEM_PROMPT = """You are the APEX Trading Blueprint Studio — a fused team of:
+- Hedge Fund CIO (institutional macro & portfolio strategy)
+- Head of Quant Research (signals, backtests, risk models)
+- Derivatives & Stochastic Calculus Expert (convexity, Greeks, path risk)
+- Behavioral Finance Lead (sentiment, positioning, market psychology)
+- Chief Risk Officer Damocles (downside protection, veto power)
+
+You generate board-ready trading blueprints as STRICT JSON.
+The user message contains LIVE MARKET DATA. You MUST use it.
+
+OUTPUT: Return ONLY valid JSON with this EXACT structure (no markdown, no backticks):
+{
+  "title": "THE [SYMBOL] TRADING & MACRO BLUEPRINT",
+  "subtitle": "NeuroAether APEX Hyper-Council Edition",
+  "executive_summary": "3 paragraphs in institutional language highlighting regime, edge, risk and recommended stance. Use real numbers from the data.",
+  "strategy_snapshot": {
+    "symbol": "[from data]",
+    "timeframe": "4H",
+    "market": "Crypto Spot/Perps",
+    "strategy_name": "APEX Momentum & Risk Framework",
+    "status": "WATCH or ACTIVE or PAUSED",
+    "conviction_level": "LOW or MEDIUM or HIGH",
+    "risk_profile": "Conservative or Moderate or Aggressive"
+  },
+  "modules": [
+    {
+      "type": "swot",
+      "title": "Strategic Market Position (SWOT)",
+      "data": {
+        "strengths": ["2-3 items based on real data"],
+        "weaknesses": ["2-3 items"],
+        "opportunities": ["2-3 items"],
+        "threats": ["2-3 items"]
+      }
+    },
+    {
+      "type": "chart_bar",
+      "title": "Projected PnL & Drawdown Profile (12 Months)",
+      "labels": ["Q1", "Q2", "Q3", "Q4"],
+      "datasets": [
+        {"label": "No Strategy", "data": [0, 0, 0, 0]},
+        {"label": "APEX Base Case", "data": [realistic numbers]},
+        {"label": "APEX Stress Case", "data": [conservative numbers]}
+      ],
+      "insight": "CIO Note with specific reasoning"
+    },
+    {
+      "type": "chart_radar",
+      "title": "Strategy Capability Radar",
+      "labels": ["Alpha Potential", "Risk Control", "Liquidity Fit", "Execution Complexity", "Robustness Across Regimes"],
+      "datasets": [
+        {"label": "Current Setup", "data": [0-100 scores]},
+        {"label": "With APEX Strategy", "data": [0-100 scores]}
+      ],
+      "insight": "Research Note with reasoning"
+    },
+    {
+      "type": "hyper_council",
+      "title": "Hyper-Council Institutional View",
+      "agents": [
+        {"role": "MACRO", "name": "Global Macro CIO", "sentiment": "LONG/SHORT/NEUTRAL", "weight": -100 to 100, "summary": "2-3 lines", "dialogue": "5-8 lines detailed"},
+        {"role": "QUANT", "name": "Head of Quant Research", "sentiment": "...", "weight": ..., "summary": "...", "dialogue": "..."},
+        {"role": "STATS", "name": "Chief Statistician", "sentiment": "...", "weight": ..., "summary": "...", "dialogue": "..."},
+        {"role": "RISK", "name": "CRO Damocles", "sentiment": "VETO/NEUTRAL/SHORT/LONG", "weight": negative, "summary": "...", "dialogue": "..."},
+        {"role": "EXECUTION", "name": "Execution Architect", "sentiment": "INFO", "weight": 0, "summary": "...", "dialogue": "..."}
+      ],
+      "consensus": {
+        "raw_sum": calculated,
+        "consensus_score": 0-100,
+        "status": "ALPHA_GO or HOLD or WAIT or VETOED",
+        "execution_log": "One institutional decision statement"
+      }
+    },
+    {
+      "type": "roadmap",
+      "title": "Implementation Roadmap",
+      "phases": [
+        {"name": "Phase 1: Backtest & Sandbox", "time": "Weeks 1-2", "action": "specific action"},
+        {"name": "Phase 2: Controlled Deployment", "time": "Weeks 3-6", "action": "specific action"},
+        {"name": "Phase 3: Scale & Institutionalize", "time": "Weeks 7+", "action": "specific action"}
+      ]
+    }
+  ],
+  "footer": "Generated by NeuroAether APEX Trading Blueprint Studio • Confidential & Proprietary"
+}
+
+CRITICAL RULES:
+1. ALL numbers must be realistic based on the live data
+2. Language must be premium, institutional, never casual
+3. JSON must be valid with no trailing commas
+4. Use REAL price levels from the data for support/resistance
+5. Respond with ONLY the JSON — no text before or after"""
+
+
 def build_academic_prompt(lang: str) -> str:
     """Academic research prompt"""
     lang_inst = get_language_instruction(lang)
@@ -609,6 +1166,248 @@ Respond in JSON:
     "practical_applications": ["Application 1", "Application 2"],
     "cross_disciplinary_insights": "Connections to other fields"
 }}"""
+
+
+# ═══════════════════════════════════════════════════════════════
+#  TERRA ALCHEMICA v6.0 — Multi-Expert Council Engine
+# ═══════════════════════════════════════════════════════════════
+
+TERRA_KNOWLEDGE = {
+    "CULINARY": (
+        "Herbal preparation methods: decoctions (βράσιμο 15-20min for roots/bark), "
+        "infusions (ζεστό νερό 5-10min for leaves/flowers), tinctures (40-60% ethanol maceration 2-6 weeks), "
+        "cold-press extraction, steam distillation for essential oils, poultices, salves (beeswax + oil base), "
+        "oxymel (honey + vinegar), electuaries (honey paste), fermented preparations, glycerites. "
+        "Critical: water temperature affects alkaloid extraction — 70°C for delicate compounds, 100°C for hardy roots."
+    ),
+    "SAFETY": (
+        "Contraindication protocols: hepatotoxic pyrrolizidine alkaloids (comfrey, borage — max 6 weeks external only), "
+        "photosensitizing furanocoumarins (St. John's Wort — avoid sun 2h post-application), "
+        "drug interactions (warfarin + ginkgo = bleeding risk, SSRIs + St. John's Wort = serotonin syndrome), "
+        "pregnancy category X herbs (pennyroyal, blue cohosh, tansy), "
+        "allergenic cross-reactivity (Asteraceae family: chamomile, echinacea, ragweed), "
+        "heavy metal bioaccumulation in wildcrafted herbs, essential oil neurotoxicity (thujone, camphor in children). "
+        "ALWAYS: patch test 24h before topical use, start low-dose oral, consult healthcare provider."
+    ),
+    "BIO": (
+        "Phytochemical classes: flavonoids (quercetin, rutin — antioxidant, anti-inflammatory via NF-κB inhibition), "
+        "terpenes (limonene, linalool — anxiolytic via GABA-A modulation), alkaloids (berberine — AMPK activation, "
+        "antimicrobial), phenolic acids (rosmarinic acid — COX-2 inhibition), saponins (ginsenosides — adaptogenic "
+        "via HPA axis modulation), polysaccharides (β-glucans — immunomodulatory via dectin-1 receptor). "
+        "Bioavailability enhancers: piperine (black pepper) increases curcumin absorption 2000%, "
+        "lipid co-administration for fat-soluble compounds, fermentation for glycoside conversion."
+    ),
+    "MONASTIC": (
+        "Mount Athos herbal tradition (1000+ years): sideritis (τσάι του βουνού — mountain tea) for longevity, "
+        "Cretan dittany (δίκταμο — Origanum dictamnus) sacred wound-healer, "
+        "mastic (μαστίχα Χίου) for digestive health — documented since Hippocrates, "
+        "monk's pepper (λυγαριά — Vitex agnus-castus) hormonal balance, "
+        "Greek oregano oil (ρίγανη) antimicrobial potency, "
+        "Athonite elixir recipes: honey + propolis + mountain herbs for immune fortification. "
+        "Hildegard von Bingen's Physica: viriditas (greening power) as healing force. "
+        "Ayurvedic rasayana: ashwagandha, tulsi, amalaki for rejuvenation. TCM tonic herbs: astragalus, reishi, goji."
+    ),
+    "ACADEMIC": (
+        "Evidence levels: systematic reviews (Cochrane), RCTs, observational studies. "
+        "Key databases: PubMed, ESCOP monographs, WHO monographs on medicinal plants, "
+        "European Pharmacopoeia (Ph. Eur.), German Commission E. "
+        "Standardization: marker compound quantification (e.g., hypericin 0.3% in SJW), "
+        "chromatographic fingerprinting (HPLC, GC-MS), DNA barcoding for species authentication. "
+        "Regulatory: EU Traditional Herbal Medicinal Products Directive 2004/24/EC, "
+        "FDA GRAS status, EMA HMPC community herbal monographs. "
+        "Current research frontiers: gut microbiome modulation by polyphenols, "
+        "epigenetic effects of phytochemicals, network pharmacology for multi-target synergy."
+    ),
+}
+
+
+def build_terra_prompt(lang: str) -> str:
+    """Terra Alchemica DaVinci Nexus synthesis mega-prompt"""
+    lang_inst = get_language_instruction(lang)
+    knowledge_block = "\n".join(f"[{k}]: {v}" for k, v in TERRA_KNOWLEDGE.items())
+    return f"""{lang_inst}
+
+═══════════════════════════════════════════════════════════════
+IDENTITY: TERRA ALCHEMICA v6.0 — DaVinci Nexus Grand Synthesis
+═══════════════════════════════════════════════════════════════
+
+You are the DaVinci Nexus — the supreme synthesis mind of the Terra Alchemica Olympus Council.
+You receive expert perspectives from Bio-Alchemist, Molecular Architect, Chronos Vaidya,
+and the Safety Guardian. Your role is to weave their insights into a Grand Opus.
+
+KNOWLEDGE BASE:
+{knowledge_block}
+
+YOUR TASK:
+Synthesize all council input into a comprehensive Grand Opus that bridges ancient wisdom
+with modern science. Be specific with dosages, mechanisms, and safety data.
+
+Respond ONLY in valid JSON with this exact structure:
+{{
+    "opus_name": "A creative alchemical name for this opus (e.g., 'Morpheus Elixir of Deep Rest')",
+    "executive_summary": "2-3 sentence overview bridging science + tradition",
+    "deep_dive_exoteric": "Public/scientific perspective: mechanisms, clinical evidence, pharmacology (300+ words)",
+    "deep_dive_esoteric": "Hidden/traditional wisdom: monastic practices, energetic properties, historical use (300+ words)",
+    "the_formula": {{
+        "ingredients": [
+            {{"name": "Herb/compound name", "amount": "Specific dosage", "properties": "Key active compounds and effects"}}
+        ],
+        "preparation_steps": ["Step 1: Detailed instruction", "Step 2: ..."],
+        "molecular_mechanisms": "How the ingredients work synergistically at a biochemical level"
+    }},
+    "safety_audit": {{
+        "status": "SAFE|CAUTION|RESTRICTED|EXPERIMENTAL",
+        "ccp_alerts": ["Critical control point 1", "Drug interaction warning"],
+        "regulatory_notes": ["EU/FDA status", "Relevant regulations"]
+    }},
+    "future_horizon": "Emerging research, future applications, innovation opportunities",
+    "kpis": [
+        {{"metric": "Efficacy Evidence Level", "value": "e.g., Level 2 — Multiple RCTs"}},
+        {{"metric": "Safety Profile", "value": "e.g., Well-established, minor interactions"}},
+        {{"metric": "Bioavailability", "value": "e.g., 45% with piperine enhancement"}},
+        {{"metric": "Traditional Use Duration", "value": "e.g., 2500+ years documented"}}
+    ]
+}}"""
+
+
+async def _terra_expert_call(expert_name: str, knowledge_layer: str, query: str, context: str = "") -> dict:
+    """Single Terra Alchemica expert consultation via OpenAI JSON mode"""
+    if not OPENAI_KEY:
+        return {"expert_name": expert_name, "perspective": "API key unavailable", "technical_points": [], "risk_flags": []}
+
+    expert_prompts = {
+        "Bio-Alchemist": (
+            f"You are the Bio-Alchemist expert. Analyze from a phytochemical and biochemical perspective.\n"
+            f"Knowledge: {TERRA_KNOWLEDGE.get('BIO', '')}\n"
+            f"Focus: active compounds, mechanisms of action, bioavailability, synergies."
+        ),
+        "Molecular Architect": (
+            f"You are the Molecular Architect expert. Analyze preparation methods and formulation.\n"
+            f"Knowledge: {TERRA_KNOWLEDGE.get('CULINARY', '')}\n"
+            f"Focus: optimal extraction methods, preparation techniques, dosage forms, stability."
+        ),
+        "Chronos Vaidya": (
+            f"You are Chronos Vaidya — keeper of ancient healing traditions across time.\n"
+            f"Knowledge: {TERRA_KNOWLEDGE.get('MONASTIC', '')}\n{TERRA_KNOWLEDGE.get('ACADEMIC', '')}\n"
+            f"Focus: historical use, traditional formulations, cross-cultural healing practices, modern validation."
+        ),
+        "Safety Guardian": (
+            f"You are the Safety Guardian. Your word is FINAL on safety matters.\n"
+            f"Knowledge: {TERRA_KNOWLEDGE.get('SAFETY', '')}\n"
+            f"Focus: contraindications, drug interactions, dosage limits, vulnerable populations, regulatory status."
+        ),
+    }
+
+    system_prompt = expert_prompts.get(expert_name, f"You are {expert_name}. Provide expert analysis.")
+    user_content = f"Query: {query}"
+    if context:
+        user_content += f"\n\nCouncil context so far:\n{context}"
+    user_content += (
+        f'\n\nRespond ONLY in valid JSON: {{"expert_name": "{expert_name}", '
+        f'"perspective": "your detailed analysis (200+ words)", '
+        f'"technical_points": ["point 1", "point 2", "point 3"], '
+        f'"risk_flags": ["any safety concerns or none"]}}'
+    )
+
+    client = await get_client()
+    try:
+        r = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                "max_tokens": 2000,
+                "temperature": 0.7,
+                "response_format": {"type": "json_object"}
+            },
+            timeout=60
+        )
+        data = r.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if content:
+            return json.loads(content)
+    except Exception as e:
+        log.warning(f"Terra expert {expert_name} failed: {e}")
+
+    return {"expert_name": expert_name, "perspective": f"{expert_name} consultation unavailable", "technical_points": [], "risk_flags": []}
+
+
+async def run_terra_council(query: str, language: str, chat_id: int) -> dict:
+    """Execute 3-stage Terra Alchemica multi-expert council"""
+    log.info(f"🌿 Summoning Terra Alchemica Council for: {query[:80]}")
+
+    # ── Stage 1: Parallel expert consultations ──
+    await send_typing(chat_id)
+    try:
+        bio_task = _terra_expert_call("Bio-Alchemist", "BIO", query)
+        mol_task = _terra_expert_call("Molecular Architect", "CULINARY", query)
+        chrono_task = _terra_expert_call("Chronos Vaidya", "MONASTIC", query)
+        experts = await asyncio.gather(bio_task, mol_task, chrono_task, return_exceptions=True)
+
+        expert_results = []
+        all_risks = []
+        for exp in experts:
+            if isinstance(exp, Exception):
+                log.warning(f"Terra expert exception: {exp}")
+                continue
+            if isinstance(exp, dict):
+                expert_results.append(exp)
+                all_risks.extend(exp.get("risk_flags", []))
+    except Exception as e:
+        log.error(f"Terra Stage 1 failed: {e}")
+        return {}
+
+    # ── Stage 2: Safety Guardian reviews aggregated risks ──
+    await send_typing(chat_id)
+    risk_context = f"Aggregated risks from council: {json.dumps(all_risks, ensure_ascii=False)}"
+    council_minutes = json.dumps(expert_results, ensure_ascii=False, indent=1)
+    try:
+        safety = await _terra_expert_call("Safety Guardian", "SAFETY", query, risk_context)
+    except Exception as e:
+        log.warning(f"Terra Safety Guardian failed: {e}")
+        safety = {"expert_name": "Safety Guardian", "perspective": "Safety review unavailable", "technical_points": [], "risk_flags": all_risks}
+
+    # ── Stage 3: DaVinci Nexus Grand Synthesis ──
+    await send_typing(chat_id)
+    synthesis_prompt = build_terra_prompt(language)
+    synthesis_context = (
+        f"COUNCIL MINUTES:\n{council_minutes}\n\n"
+        f"SAFETY GUARDIAN REPORT:\n{json.dumps(safety, ensure_ascii=False, indent=1)}\n\n"
+        f"Original query: {query}"
+    )
+
+    client = await get_client()
+    try:
+        r = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": synthesis_prompt},
+                    {"role": "user", "content": synthesis_context}
+                ],
+                "max_tokens": 10000,
+                "temperature": 0.7,
+                "response_format": {"type": "json_object"}
+            },
+            timeout=120
+        )
+        data = r.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if content:
+            opus = json.loads(content)
+            if isinstance(opus, dict) and opus.get("opus_name"):
+                log.info(f"🌿 Terra Grand Opus complete: {opus.get('opus_name', 'unnamed')}")
+                return opus
+    except Exception as e:
+        log.error(f"Terra DaVinci Nexus synthesis failed: {e}")
+
+    return {}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -704,6 +1503,25 @@ ENGINES = {
                       "κλήρωση", "τυχεροί", "νούμερα"],
         "build_prompt": lambda lang: build_oracle_prompt(lang),
     },
+    "blueprint": {
+        "icon": "📄",
+        "name": "APEX Trading Blueprint",
+        "desc": "Hedge fund-grade PDF reports with Hyper-Council analysis",
+        "keywords": ["blueprint", "report", "pdf", "trading plan",
+                      "αναφορά", "σχέδιο", "trading blueprint"],
+        "build_prompt": lambda lang: "",
+    },
+    "crypto": {
+        "icon": "📊",
+        "name": "APEX Crypto Intelligence",
+        "desc": "Live crypto prices, APEX trading analysis, market data",
+        "keywords": ["crypto", "bitcoin", "btc", "ethereum", "eth", "solana", "sol",
+                      "usdt", "bnb", "xrp", "doge", "ada", "dot", "avax", "matic",
+                      "price", "trading", "trade", "mexc", "gate", "exchange",
+                      "κρυπτο", "μπιτκοιν", "τιμή", "αγορά", "πώληση",
+                      "νομίσματα", "ανταλλαγή", "πορτοφόλι"],
+        "build_prompt": lambda lang: build_crypto_prompt(lang),
+    },
     "molecular": {
         "icon": "⚗️",
         "name": "Molecular Gastronomy",
@@ -751,6 +1569,20 @@ ENGINES = {
                       "άρθρο", "δημοσίευση", "ακαδημαϊκό", "επιστημονικό",
                       "πανεπιστήμιο", "διατριβή", "βιβλιογραφία"],
         "build_prompt": lambda lang: build_academic_prompt(lang),
+    },
+    "terra": {
+        "icon": "🌿",
+        "name": "Terra Alchemica",
+        "desc": "Olympus Council: Bio-Alchemy + Molecular + Monastic + Safety",
+        "keywords": ["terra", "alchemy", "alchemica", "herbs", "healing",
+                      "phyto", "ayurveda", "monastic", "holistic", "elixir",
+                      "tincture", "potion", "botanical", "herbal", "remedy",
+                      "alximeia", "votana", "therapeia", "monasthriako",
+                      "βότανα", "βότανο", "αλχημεία", "θεραπεία", "μοναστηριακό",
+                      "ελιξίριο", "φαρμακευτικό", "φυτοθεραπεία", "αγιορείτικο",
+                      "βιοαλχημεία", "ολιστικό", "αρωματικά φυτά", "τσάι βουνού",
+                      "δίκταμο", "χαμομήλι", "ρίγανη", "φασκόμηλο"],
+        "build_prompt": lambda lang: build_terra_prompt(lang),
     },
 }
 
@@ -1142,8 +1974,8 @@ async def call_aetherlang_flow(node: str, query: str, language: str = "en") -> d
     
     node_map = {"chef": "chef", "molecular": "molecular", "omega": "chef",
                 "apex": "apex", "brain": "apex", "assembly": "assembly",
-                "lab": "research", "academic": "research", "consulting": "consult",
-                "marketing": "market", "oracle": "oracle", "cyber": "apex"}
+                "lab": "analyze", "academic": "analyze", "consulting": "consulting",
+                "marketing": "marketing", "oracle": "oracle", "cyber": "apex", "terra": "apex"}
     
     flow_key = node_map.get(node, "apex")
     template = FLOW_TEMPLATES.get(flow_key, FLOW_TEMPLATES["apex"])
@@ -1228,6 +2060,8 @@ async def call_openrouter(query: str, engine_key: str, language: str, opap_data:
     # Build the MEGA system prompt
     if engine_key == "oracle" and opap_data:
         sys_prompt = build_oracle_prompt(language, opap_data)
+    elif engine_key == "crypto":
+        sys_prompt = build_crypto_prompt(language, opap_data)
     elif "build_prompt" in engine:
         sys_prompt = engine["build_prompt"](language)
     else:
@@ -1249,8 +2083,14 @@ async def call_openrouter(query: str, engine_key: str, language: str, opap_data:
         temperature = 0.6
     elif engine_key in ["marketing"]:
         temperature = 0.85
+    elif engine_key in ["crypto"]:
+        temperature = 0.5
+        max_tokens = 8000
     elif engine_key in ["lab", "academic"]:
         temperature = 0.5
+    elif engine_key == "terra":
+        max_tokens = 10000
+        temperature = 0.7
     
     try:
         r = await client.post(
@@ -1705,6 +2545,108 @@ def format_oracle_response(data: dict) -> str:
     return "\n".join(lines)
 
 
+def format_crypto_analysis(data: dict) -> str:
+    """Format APEX crypto analysis for Telegram"""
+    lines = ["🧠 <b>APEX Crypto Intelligence — Analysis</b>\n"]
+    
+    # Market overview
+    overview = data.get("market_overview", {})
+    if overview:
+        regime = str(overview.get("regime", "N/A")).upper()
+        sentiment = str(overview.get("sentiment", "N/A")).upper()
+        narrative = overview.get("key_narrative", "")
+        regime_emoji = {"BULL": "🟢", "BEAR": "🔴", "CHOP": "🟡", "TRANSITION": "🔄"}.get(regime, "⚪")
+        lines.append(f"{regime_emoji} <b>Regime:</b> {esc(regime)} | <b>Sentiment:</b> {esc(sentiment)}")
+        if narrative:
+            lines.append(f"📝 {esc(str(narrative)[:300])}")
+        lines.append("")
+    
+    # Coin analysis
+    coins = data.get("coin_analysis", [])
+    for coin in coins[:8]:
+        if isinstance(coin, dict):
+            symbol = str(coin.get("symbol", "?")).upper()
+            verdict = str(coin.get("verdict", "N/A")).upper()
+            conviction = str(coin.get("conviction", "N/A")).upper()
+            insight = coin.get("key_insight", "")
+            risk = coin.get("risk_warning", "")
+            support = coin.get("support", [])
+            resistance = coin.get("resistance", [])
+            
+            v_emoji = {"LONG": "🟢", "SHORT": "🔴", "NEUTRAL": "⚪", "WAIT": "🟡"}.get(verdict, "⚪")
+            lines.append(f"{v_emoji} <b>{esc(symbol)}</b> — {esc(verdict)} ({esc(conviction)})")
+            
+            # Handle support/resistance - could be list of numbers, strings, or a single string
+            def format_levels(levels):
+                if isinstance(levels, str):
+                    return levels
+                if isinstance(levels, list):
+                    parts = []
+                    for lv in levels:
+                        if isinstance(lv, (int, float)):
+                            if lv >= 1000:
+                                parts.append(f"${lv:,.0f}")
+                            elif lv >= 1:
+                                parts.append(f"${lv:,.2f}")
+                            else:
+                                parts.append(f"${lv:,.4f}")
+                        else:
+                            s = str(lv).strip()
+                            if s and not s.startswith("$"):
+                                s = f"${s}"
+                            parts.append(s)
+                    return " / ".join(parts) if parts else ""
+                return str(levels)
+            
+            sup_str = format_levels(support)
+            res_str = format_levels(resistance)
+            if sup_str:
+                lines.append(f"  📉 Support: {esc(sup_str)}")
+            if res_str:
+                lines.append(f"  📈 Resistance: {esc(res_str)}")
+            if insight:
+                lines.append(f"  💡 {esc(str(insight)[:250])}")
+            if risk:
+                lines.append(f"  ⚠️ {esc(str(risk)[:200])}")
+            lines.append("")
+    
+    # Hyper council
+    council = data.get("hyper_council", {})
+    if council:
+        lines.append("<b>🏛 Hyper-Council:</b>")
+        labels = {"macro_view": "🌍 Macro", "quant_signal": "📊 Quant", "risk_assessment": "⚠️ Risk (Damocles)", "regime_status": "📈 Regime"}
+        for key, label in labels.items():
+            val = council.get(key, "")
+            if val:
+                lines.append(f"  {label}: {esc(str(val)[:250])}")
+        lines.append("")
+    
+    # Action plan
+    plan = data.get("action_plan", {})
+    if plan:
+        lines.append("<b>🎯 Action Plan:</b>")
+        if plan.get("primary_trade"):
+            lines.append(f"  🎯 {esc(str(plan['primary_trade'])[:200])}")
+        if plan.get("entry_logic"):
+            lines.append(f"  📍 Entry: {esc(str(plan['entry_logic'])[:200])}")
+        if plan.get("risk_management"):
+            lines.append(f"  🛡️ Risk: {esc(str(plan['risk_management'])[:200])}")
+        if plan.get("time_horizon"):
+            lines.append(f"  ⏱️ Horizon: {esc(str(plan['time_horizon']))}")
+        lines.append("")
+    
+    # Disclaimer - handle both string and dict
+    disclaimer = data.get("disclaimer", "")
+    if isinstance(disclaimer, dict):
+        disc_text = disclaimer.get("responsible_trading_warning", "") or disclaimer.get("text", "") or str(list(disclaimer.values())[0]) if disclaimer else ""
+    else:
+        disc_text = str(disclaimer)
+    if disc_text:
+        lines.append(f"\n⚠️ {esc(disc_text[:250])}")
+    
+    return "\n".join(lines)
+
+
 def format_generic_response(data: dict, engine_key: str) -> str:
     """Format generic JSON response"""
     engine = ENGINES.get(engine_key, {"icon": "🧠", "name": "Brain"})
@@ -1741,6 +2683,72 @@ def format_generic_response(data: dict, engine_key: str) -> str:
             if isinstance(r_item, dict):
                 lines.append(f"  • {esc(str(r_item.get('risk', ''))[:100])}: {esc(str(r_item.get('mitigation', '')[:100]))}")
     
+    return "\n".join(lines)
+
+
+def format_terra_response(data: dict) -> str:
+    """Format Terra Alchemica Grand Opus for Telegram"""
+    lines = []
+    opus_name = data.get("opus_name", "Terra Alchemica Opus")
+    lines.append(f"🌿 <b>TERRA ALCHEMICA — {esc(opus_name)}</b>\n")
+
+    summary = data.get("executive_summary", "")
+    if summary:
+        lines.append(f"📜 <b>Summary:</b>\n{esc(summary[:600])}\n")
+
+    exoteric = data.get("deep_dive_exoteric", "")
+    if exoteric:
+        lines.append(f"🔬 <b>Scientific Perspective:</b>\n{esc(exoteric[:800])}\n")
+
+    esoteric = data.get("deep_dive_esoteric", "")
+    if esoteric:
+        lines.append(f"🏛️ <b>Ancient Wisdom:</b>\n{esc(esoteric[:800])}\n")
+
+    formula = data.get("the_formula", {})
+    if formula:
+        ingredients = formula.get("ingredients", [])
+        if ingredients:
+            lines.append("⚗️ <b>The Formula — Ingredients:</b>")
+            for ing in ingredients[:10]:
+                if isinstance(ing, dict):
+                    name = ing.get("name", "")
+                    amount = ing.get("amount", "")
+                    props = ing.get("properties", "")
+                    lines.append(f"  🌱 <b>{esc(name)}</b> — {esc(amount)}")
+                    if props:
+                        lines.append(f"      <i>{esc(props[:120])}</i>")
+
+        steps = formula.get("preparation_steps", [])
+        if steps:
+            lines.append("\n📋 <b>Preparation:</b>")
+            for i, step in enumerate(steps[:8], 1):
+                lines.append(f"  {i}. {esc(str(step)[:200])}")
+
+        mechanisms = formula.get("molecular_mechanisms", "")
+        if mechanisms:
+            lines.append(f"\n🧬 <b>Molecular Mechanisms:</b>\n{esc(mechanisms[:500])}")
+
+    safety = data.get("safety_audit", {})
+    if safety:
+        status = safety.get("status", "UNKNOWN")
+        status_emoji = {"SAFE": "✅", "CAUTION": "⚠️", "RESTRICTED": "🚫", "EXPERIMENTAL": "🔬"}.get(status, "❓")
+        lines.append(f"\n🛡️ <b>Safety Audit:</b> {status_emoji} {esc(status)}")
+        for alert in safety.get("ccp_alerts", [])[:5]:
+            lines.append(f"  ⚠️ {esc(str(alert)[:150])}")
+        for note in safety.get("regulatory_notes", [])[:3]:
+            lines.append(f"  📋 {esc(str(note)[:150])}")
+
+    horizon = data.get("future_horizon", "")
+    if horizon:
+        lines.append(f"\n🔮 <b>Future Horizon:</b>\n{esc(horizon[:400])}")
+
+    kpis = data.get("kpis", [])
+    if kpis:
+        lines.append("\n📊 <b>Key Metrics:</b>")
+        for kpi in kpis[:6]:
+            if isinstance(kpi, dict):
+                lines.append(f"  • <b>{esc(str(kpi.get('metric', ''))[:60])}:</b> {esc(str(kpi.get('value', ''))[:100])}")
+
     return "\n".join(lines)
 
 
@@ -1793,6 +2801,10 @@ def format_response(data, engine_key: str) -> str:
         return format_assembly_response(data)
     elif engine_key == "oracle":
         return format_oracle_response(data)
+    elif engine_key == "crypto":
+        return format_crypto_analysis(data)
+    elif engine_key == "terra":
+        return format_terra_response(data)
     else:
         return format_generic_response(data, engine_key)
 
@@ -1821,12 +2833,236 @@ async def process_query(query: str, engine_key: str, user_id: int, chat_id: int)
     # ALL languages → AetherLang backend first (has MEGA prompts)
     # Then fallback to OpenAI direct
     # ENGLISH → AetherLang backend first
+    # ORACLE -> OpenRouter FIRST (has quantum prompt with number generation)
+    if engine_key == "oracle":
+        try:
+            await send_typing(chat_id)
+            enriched_query = f"{query}\n\nLIVE OPAP DATA:\n{opap_context}" if opap_context else query
+            result = await call_openrouter(enriched_query, engine_key, language, opap_context)
+            elapsed = time.time() - start_time
+            formatted = format_response(result, engine_key)
+            formatted += f"\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u23f1\ufe0f {elapsed:.1f}s | \U0001f916 {model_used} | \U0001f310 {'EL' if language == 'el' else 'EN'}"
+            return formatted
+        except Exception as e_oracle:
+            last_error = str(e_oracle)
+            log.warning(f"Oracle OpenRouter failed: {e_oracle}")
+
+    # BLUEPRINT -> Generate PDF report
+    if engine_key == "blueprint":
+        try:
+            await send_typing(chat_id)
+            
+            # Detect coins
+            coin_ids = detect_crypto_coins(query)
+            if not coin_ids:
+                coin_ids = ["bitcoin"]
+            
+            # Fetch all data
+            import asyncio as aio
+            cg_task = fetch_coingecko_data(coin_ids)
+            ex_task = fetch_exchange_data(coin_ids)
+            crypto_data, exchange_data = await aio.gather(cg_task, ex_task)
+            
+            # Send status
+            status_msg = "📄 Generating APEX Trading Blueprint...\n⏳ This takes 30-60 seconds"
+            if language == "el":
+                status_msg = "📄 Δημιουργία APEX Trading Blueprint...\n⏳ Αναμονή 30-60 δευτερόλεπτα"
+            await send_msg(chat_id, status_msg)
+            await send_typing(chat_id)
+            
+            # Build context
+            crypto_context = format_crypto_context(crypto_data)
+            ex_context = format_exchange_context(exchange_data)
+            full_context = crypto_context + ex_context
+            
+            # Call LLM for blueprint JSON
+            enriched_query = f"Generate a complete APEX Trading Blueprint for the following market data:\n\n{full_context}\n\nUser query: {query}"
+            
+            client = await get_client()
+            headers = {"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": BLUEPRINT_SYSTEM_PROMPT},
+                    {"role": "user", "content": enriched_query}
+                ],
+                "max_tokens": 8000,
+                "temperature": 0.5
+            }
+            
+            r = await client.post("https://api.openai.com/v1/chat/completions", 
+                                  json=payload, headers=headers, timeout=120)
+            
+            if r.status_code != 200:
+                raise Exception(f"OpenAI error: {r.status_code}")
+            
+            resp_data = r.json()
+            raw_text = resp_data["choices"][0]["message"]["content"]
+            
+            # Clean and parse JSON
+            clean = raw_text.strip()
+            if clean.startswith("```"):
+                clean = clean.split("\n", 1)[1] if "\n" in clean else clean[3:]
+                if clean.endswith("```"):
+                    clean = clean[:-3]
+                clean = clean.strip()
+            if clean.startswith("json"):
+                clean = clean[4:].strip()
+            
+            report_json = json.loads(clean)
+            
+            # Generate PDF
+            from apex_blueprint import generate_blueprint_pdf
+            import os
+            
+            symbol_clean = coin_ids[0].replace("-", "_")
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            pdf_path = f"/tmp/APEX_Blueprint_{symbol_clean}_{timestamp}.pdf"
+            
+            generate_blueprint_pdf(report_json, pdf_path)
+            
+            # Post-process with Ghostscript for maximum compatibility
+            compat_path = pdf_path.replace(".pdf", "_compat.pdf")
+            try:
+                import subprocess
+                subprocess.run([
+                    "gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
+                    "-dPDFSETTINGS=/default", "-dNOPAUSE", "-dQUIET", "-dBATCH",
+                    f"-sOutputFile={compat_path}", pdf_path
+                ], timeout=30, check=True)
+                os.remove(pdf_path)
+                pdf_path = compat_path
+            except Exception as gs_err:
+                log.warning(f"Ghostscript post-process failed: {gs_err}")
+            
+            # Send PDF via Telegram
+            pdf_size = os.path.getsize(pdf_path)
+            with open(pdf_path, 'rb') as pdf_file:
+                files = {"document": (f"APEX_Blueprint_{symbol_clean}.pdf", pdf_file, "application/pdf")}
+                send_data = {"chat_id": chat_id, "caption": f"📄 APEX Trading Blueprint — {report_json.get('strategy_snapshot', {}).get('symbol', symbol_clean.upper())}\n🏛 Hyper-Council Analysis\n⏱️ {time.time() - start_time:.1f}s"}
+                sr = await client.post(f"{TELEGRAM_API}/sendDocument", data=send_data, files=files, timeout=30)
+                
+                # Get download link for PC users
+                sr_json = sr.json()
+                if sr_json.get("ok"):
+                    file_id = sr_json["result"].get("document", {}).get("file_id", "")
+                    if file_id:
+                        # Get file path from Telegram
+                        file_resp = await client.get(f"{TELEGRAM_API}/getFile?file_id={file_id}", timeout=10)
+                        file_data = file_resp.json()
+                        if file_data.get("ok"):
+                            file_path = file_data["result"].get("file_path", "")
+                            download_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}"
+                            await send_msg(chat_id, f"💻 <b>PC Download:</b>\n<a href=\"{download_url}\">📥 Click here to download PDF</a>\n\n💡 An den anoigei sto Telegram Desktop, anoikse to link ston browser.")
+            
+            # Cleanup
+            os.remove(pdf_path)
+            
+            # Send text summary for those who can't open PDF
+            snapshot = report_json.get("strategy_snapshot", {})
+            council_mod = next((m for m in report_json.get("modules", []) if m.get("type") == "hyper_council"), {})
+            consensus = council_mod.get("consensus", {})
+            
+            summary_lines = [
+                "📄 <b>APEX Trading Blueprint — Summary</b>\n",
+                f"📌 <b>Symbol:</b> {esc(str(snapshot.get('symbol', 'N/A')))}",
+                f"📊 <b>Status:</b> {esc(str(snapshot.get('status', 'N/A')))}",
+                f"🎯 <b>Conviction:</b> {esc(str(snapshot.get('conviction_level', 'N/A')))}",
+                f"⚖️ <b>Risk:</b> {esc(str(snapshot.get('risk_profile', 'N/A')))}\n",
+                f"🏛 <b>Consensus:</b> {esc(str(consensus.get('status', 'N/A')))} (Score: {consensus.get('consensus_score', 'N/A')})",
+                f"📝 {esc(str(consensus.get('execution_log', ''))[:300])}\n",
+            ]
+            
+            # Add agent summaries
+            agents = council_mod.get("agents", [])
+            for ag in agents[:5]:
+                if isinstance(ag, dict):
+                    role = ag.get("role", "")
+                    sentiment = ag.get("sentiment", "")
+                    s_emoji = {"LONG": "🟢", "STRONG_LONG": "🟢", "SHORT": "🔴", "STRONG_SHORT": "🔴", "VETO": "🚫", "NEUTRAL": "🟡", "INFO": "ℹ️"}.get(sentiment, "⚪")
+                    summary_lines.append(f"{s_emoji} <b>{esc(role)}:</b> {esc(str(ag.get('summary', ''))[:150])}")
+            
+            summary_lines.append(f"\n💡 Full report in the PDF above ↑")
+            
+            elapsed = time.time() - start_time
+            summary_lines.append(f"\n⏱️ {elapsed:.1f}s | 🤖 gpt-4o")
+            
+            return "\n".join(summary_lines)
+            
+        except json.JSONDecodeError as je:
+            log.error(f"Blueprint JSON parse error: {je}")
+            return f"❌ Blueprint generation failed — JSON parse error. Try again."
+        except Exception as e_bp:
+            log.error(f"Blueprint error: {e_bp}")
+            import traceback
+            traceback.print_exc()
+            return f"❌ Blueprint error: {esc(str(e_bp)[:300])}"
+
+    # CRYPTO -> Show price table + APEX analysis via OpenRouter
+    if engine_key == "crypto":
+        try:
+            await send_typing(chat_id)
+            coin_ids = detect_crypto_coins(query)
+            
+            # Fetch CoinGecko + Exchange data in parallel
+            import asyncio as aio
+            cg_task = fetch_coingecko_data(coin_ids)
+            ex_task = fetch_exchange_data(coin_ids)
+            crypto_data, exchange_data = await aio.gather(cg_task, ex_task)
+            
+            # Send price table + exchange comparison immediately
+            table = format_crypto_table(crypto_data, language)
+            ex_table = format_exchange_table(exchange_data, language)
+            if ex_table:
+                table += ex_table
+            await send_msg(chat_id, table)
+            
+            # Now get APEX analysis with ALL data
+            await send_typing(chat_id)
+            crypto_context = format_crypto_context(crypto_data)
+            ex_context = format_exchange_context(exchange_data)
+            full_context = crypto_context + ex_context
+            enriched_crypto_query = f"{query}\n\n{full_context}"
+            result = await call_openrouter(enriched_crypto_query, "crypto", language, full_context)
+            elapsed = time.time() - start_time
+            formatted = format_response(result, "crypto")
+            formatted += f"\n\n──────────────────────────────\n⏱️ {elapsed:.1f}s | 🤖 {model_used} | 🌐 {'EL' if language == 'el' else 'EN'}"
+            return formatted
+        except Exception as e_crypto:
+            last_error = str(e_crypto)
+            log.warning(f"Crypto engine failed: {e_crypto}")
+            # Still try to return the table if we have it
+            try:
+                if crypto_data and crypto_data.get("coins"):
+                    return format_crypto_table(crypto_data, language) + f"\n\n⚠️ Analysis unavailable: {last_error}"
+            except:
+                pass
+
+    # TERRA ALCHEMICA -> Multi-expert council
+    if engine_key == "terra":
+        try:
+            status_msg = "🌿 Summoning the Terra Alchemica Council...\n⏳ 3-stage expert analysis in progress"
+            if language == "el":
+                status_msg = "🌿 Σύγκληση του Συμβουλίου Terra Alchemica...\n⏳ 3-σταδιακή ανάλυση ειδικών σε εξέλιξη"
+            await send_msg(chat_id, status_msg)
+            opus = await run_terra_council(query, language, chat_id)
+            if opus and isinstance(opus, dict) and opus.get("opus_name"):
+                elapsed = time.time() - start_time
+                formatted = format_terra_response(opus)
+                formatted += f"\n\n──────────────────────────────\n⏱️ {elapsed:.1f}s | 🤖 gpt-4o ×5 | 🌐 {'EL' if language == 'el' else 'EN'}"
+                return formatted
+            else:
+                log.warning("Terra council returned empty, falling through to standard processing")
+        except Exception as e_terra:
+            log.warning(f"Terra council failed: {e_terra}, falling through")
+
+    # ALL OTHER engines -> AetherLang backend first
     try:
         await send_typing(chat_id)
         node_map = {"chef": "chef", "molecular": "molecular", "omega": "chef",
                     "apex": "apex", "brain": "apex", "assembly": "assembly",
-                    "lab": "research", "academic": "research", "consulting": "consult",
-                    "marketing": "market", "oracle": "oracle", "cyber": "apex"}
+                    "lab": "analyze", "academic": "analyze", "consulting": "consulting",
+                    "marketing": "marketing", "oracle": "oracle", "cyber": "apex", "terra": "apex"}
         node = node_map.get(engine_key, "apex")
         
         # Add OPAP context to query for oracle
@@ -1874,6 +3110,79 @@ async def process_query(query: str, engine_key: str, user_id: int, chat_id: int)
         return f"❌ All engines failed.\nAetherLang: {last_error}\nOpenRouter: {e2}\nLanguage: {lang_label}"
 
 # ═══════════════════════════════════════════════════════════════
+#  VISION CHEF HELPER FUNCTION
+# ═══════════════════════════════════════════════════════════════
+
+async def _vision_chef_process(chat_id: int, user_id: int, file_ids: list, caption: str):
+    """Process 1-10 photos through Vision Chef v4"""
+    try:
+        lang = detect_language(caption, user_id)
+        diff = "medium"
+        svgs = 4
+        if caption:
+            cl = caption.lower()
+            if "easy" in cl or "aplo" in cl: diff = "easy"
+            elif "hard" in cl or "dyskolo" in cl: diff = "hard"
+            elif "master" in cl: diff = "masterchef"
+            import re as _re
+            sm = _re.search(r"(\d+)\s*(at|ser|mer)", cl)
+            if sm: svgs = min(50, int(sm.group(1)))
+
+        n = len(file_ids)
+        await send_msg(chat_id, f"<b>Vision Chef v4</b> -- Analyzing {n} photo{'s' if n > 1 else ''}...\nDifficulty: {diff} | Servings: {svgs}\n6-Member Culinary Council activated\nEstimated: ~{30 + n * 15}-{60 + n * 20} seconds")
+        await send_typing(chat_id)
+
+        client = await get_client()
+        all_photo_bytes = []
+        for fid in file_ids[:10]:
+            fr = await client.get(f"{TELEGRAM_API}/getFile?file_id={fid}", timeout=10)
+            file_path = fr.json().get("result", {}).get("file_path", "")
+            photo_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}"
+            pr = await client.get(photo_url, timeout=30)
+            all_photo_bytes.append(pr.content)
+
+        from vision_chef import run_vision_pipeline_multi, generate_recipe_pdf, format_vision_telegram, format_ingredient_report
+        result = await run_vision_pipeline_multi(all_photo_bytes, lang=lang, difficulty=diff, servings=svgs)
+
+        s1_list = result.get("ingredients_list", [result.get("ingredients", {})])
+        ing_report = format_ingredient_report(s1_list, lang)
+        await send_msg(chat_id, ing_report)
+        await send_typing(chat_id)
+
+        recipe = result["recipe"]
+        metrics = result["metrics"]
+        summary = format_vision_telegram(recipe, metrics, pdf_sent=True)
+        await send_msg(chat_id, summary)
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        rname = recipe.get("recipe_name", "Recipe").replace(" ", "_").replace("/", "-")[:50]
+        pdf_path = f"/tmp/VisionChef_{rname}_{ts}.pdf"
+        generate_recipe_pdf(recipe, metrics, pdf_path)
+        pdf_size = os.path.getsize(pdf_path)
+        pdf_filename = f"VisionChef_{rname}.pdf"
+        with open(pdf_path, "rb") as pf:
+            files = {"document": (pdf_filename, pf, "application/pdf")}
+            sd = {"chat_id": chat_id, "caption": "Recipe PDF - " + str(int(pdf_size/1024)) + " KB | Council v4"}
+            client = await get_client()
+            sr = await client.post(f"{TELEGRAM_API}/sendDocument", data=sd, files=files, timeout=30)
+        try:
+            sr_data = sr.json()
+            doc = sr_data.get("result", {}).get("document", {})
+            if doc.get("file_id"):
+                fr2 = await client.get(f"{TELEGRAM_API}/getFile?file_id={doc['file_id']}", timeout=10)
+                dl_path = fr2.json().get("result", {}).get("file_path", "")
+                if dl_path:
+                    dl_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{dl_path}"
+                    await send_msg(chat_id, f'<a href="{dl_url}">Click to download PDF on PC</a>')
+        except Exception:
+            pass
+        os.remove(pdf_path)
+    except Exception as e:
+        log.error(f"Vision Chef error: {e}")
+        await send_msg(chat_id, f"Vision Chef error: {esc(str(e)[:300])}")
+    return
+
+# ═══════════════════════════════════════════════════════════════
 #  TELEGRAM MESSAGE HANDLER
 # ═══════════════════════════════════════════════════════════════
 
@@ -1886,6 +3195,52 @@ async def handle_message(update: dict):
     user_id = user.get("id", 0)
     first_name = user.get("first_name", "User")
     
+    # ── PHOTO HANDLER (Vision Chef v4) — Multi-Photo Support ──
+    photo_list = msg.get("photo", [])
+    caption = msg.get("caption", "").strip()
+    media_group_id = msg.get("media_group_id", "")
+    if photo_list and chat_id:
+        if ALLOWED_USERS and user_id not in ALLOWED_USERS:
+            await send_msg(chat_id, "Access restricted.")
+            return
+        best_photo = photo_list[-1]
+        file_id = best_photo["file_id"]
+        
+        if media_group_id:
+            if media_group_id not in _photo_buffer:
+                _photo_buffer[media_group_id] = {
+                    "chat_id": chat_id, "user_id": user_id,
+                    "photos": [], "caption": caption, "task": None,
+                    "notified": False
+                }
+            _photo_buffer[media_group_id]["photos"].append(file_id)
+
+            # Send notification on first photo
+            if not _photo_buffer[media_group_id]["notified"]:
+                await send_msg(chat_id, "📸 Album detected - buffering photos...")
+                _photo_buffer[media_group_id]["notified"] = True
+            if caption and not _photo_buffer[media_group_id]["caption"]:
+                _photo_buffer[media_group_id]["caption"] = caption
+            
+            if _photo_buffer[media_group_id]["task"]:
+                _photo_buffer[media_group_id]["task"].cancel()
+            
+            async def _process_group(mgid=media_group_id):
+                await asyncio.sleep(3)
+                buf = _photo_buffer.pop(mgid, None)
+                if not buf:
+                    return
+                # Notify user of final count
+                photo_count = len(buf["photos"])
+                await send_msg(buf["chat_id"], f"✅ Collected {photo_count} photo{'s' if photo_count > 1 else ''} - processing...")
+                await _vision_chef_process(buf["chat_id"], buf["user_id"], buf["photos"], buf["caption"])
+
+            _photo_buffer[media_group_id]["task"] = asyncio.create_task(_process_group())
+            return
+        else:
+            await _vision_chef_process(chat_id, user_id, [file_id], caption)
+            return
+
     if not text or not chat_id:
         return
     
@@ -1913,7 +3268,7 @@ async def handle_message(update: dict):
 
 The world's most advanced AI orchestration platform — now in your pocket.
 
-🧠 <b>12 AI Engines Available:</b>
+🧠 <b>15 AI Engines Available:</b>
 
 👨‍🍳 /chef — Michelin recipes + MacYuFBI + HACCP + financials
 📈 /apex — Nobel-level business strategy (9-section)
@@ -1922,19 +3277,22 @@ The world's most advanced AI orchestration platform — now in your pocket.
 🔬 /lab — Deep scientific analysis + Nobel insights
 📣 /marketing — Viral campaign generator
 🎰 /oracle — <b>LIVE OPAP data</b> + statistics + lucky numbers
+📊 /crypto — <b>LIVE crypto prices</b> + APEX trading analysis + 4 exchanges
+📄 /blueprint — Hedge fund-grade PDF reports + trading strategies
 ⚗️ /molecular — Molecular gastronomy techniques
 🔥 /omega — Neural Kitchen (15 AI agents)
 🧠 /brain — Super Brain Nobel mode
 🔒 /cyber — Security intelligence
 🎓 /academic — Search arXiv, PubMed + 12 sources
+🌿 /terra — Bio-Alchemy + Molecular + Monastic Olympus Council
 
 🌐 <b>Language:</b> /lang_el (Ελληνικά) | /lang_en (English)
 
 💡 <b>Just type naturally!</b>
 "Μουσακάς για 6 άτομα" → Chef Omega 🇬🇷
 "Berlin restaurant strategy" → APEX Logic 🇬🇧
-"Τζόκερ τυχεροί αριθμοί" → LIVE OPAP Oracle 🎰
-"Should I invest in Bitcoin?" → Assembly convenes 🏛️
+"Bitcoin price" → APEX Crypto Intelligence 📊
+"Should I invest in Solana?" → Assembly convenes 🏛️
 
 ⚡ <b>Commands:</b>
 /engines — List all engines
@@ -1949,7 +3307,7 @@ Built with ❤️ by Hlia — From Kitchen to Code
         return
     
     if text == "/engines":
-        lines = ["🧠 <b>AetherLang Ω — 12 AI Engines</b>\n"]
+        lines = ["🧠 <b>AetherLang Ω — 15 AI Engines</b>\n"]
         for key, eng in ENGINES.items():
             lines.append(f"{eng['icon']} <b>/{key}</b> — {esc(eng['desc'])}")
         await send_msg(chat_id, "\n".join(lines))
@@ -2054,6 +3412,11 @@ Built with ❤️ by Hlia — From Kitchen to Code
     try:
         response = await process_query(query, engine_key, user_id, chat_id)
         await send_msg(chat_id, response)
+        # Save for PDF generation
+        if engine_key != "blueprint":
+            user_last_response[user_id] = {"text": response, "engine": engine_key, "query": query}
+            pdf_btn = {"inline_keyboard": [[{"text": "📄 PDF Report", "callback_data": f"pdf:{engine_key}"}]]}
+            await tg("sendMessage", chat_id=chat_id, text="📄 Θέλεις PDF αναφορά;", reply_markup=pdf_btn, parse_mode="HTML")
     except Exception as e:
         log.error(f"Error processing: {e}")
         await send_msg(chat_id, f"❌ Error: {esc(str(e)[:300])}")
@@ -2070,6 +3433,53 @@ async def handle_callback(update: dict):
     
     await tg("answerCallbackQuery", callback_query_id=cb.get("id", ""))
     
+    # PDF Report generation
+    if data.startswith("pdf:"):
+        eng_key = data.split(":", 1)[1]
+        last = user_last_response.get(user_id)
+        if not last:
+            await send_msg(chat_id, "⚠️ No recent response to convert to PDF.")
+            return
+        try:
+            await send_msg(chat_id, "📄 Generating PDF report...")
+            await send_typing(chat_id)
+            from universal_report import generate_engine_pdf
+            engine_info = ENGINES.get(eng_key, ENGINES["brain"])
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            title = f"{engine_info['icon']} {engine_info['name']} Report"
+            pdf_path = f"/tmp/AetherLang_{eng_key}_{timestamp}.pdf"
+            generate_engine_pdf(
+                engine_key=eng_key,
+                title=title,
+                content=last["text"],
+                output_path=pdf_path,
+                user_query=last.get("query", ""),
+            )
+            # Ghostscript compat
+            compat_path = pdf_path.replace(".pdf", "_compat.pdf")
+            try:
+                import subprocess
+                subprocess.run(["gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
+                    "-dPDFSETTINGS=/default", f"-sOutputFile={compat_path}", pdf_path],
+                    capture_output=True, timeout=30)
+                import os
+                os.remove(pdf_path)
+                pdf_path = compat_path
+            except:
+                pass
+            import os
+            pdf_size = os.path.getsize(pdf_path)
+            with open(pdf_path, "rb") as pdf_file:
+                files = {"document": (f"AetherLang_{eng_key}_Report.pdf", pdf_file, "application/pdf")}
+                send_data = {"chat_id": chat_id, "caption": engine_info["icon"] + " " + engine_info["name"] + " Report - " + str(int(pdf_size/1024)) + " KB"}
+                client = await get_client()
+                sr = await client.post(f"{TELEGRAM_API}/sendDocument", data=send_data, files=files, timeout=30)
+            os.remove(pdf_path)
+        except Exception as e:
+            log.error(f"PDF generation error: {e}")
+            await send_msg(chat_id, f"❌ PDF error: {esc(str(e)[:200])}")
+        return
+
     if data.startswith("engine:"):
         engine_key = data.split(":", 1)[1]
         engine = ENGINES.get(engine_key, ENGINES["brain"])

@@ -5,7 +5,7 @@ import {
   Cpu, Play, CheckCircle, AlertCircle, FileCode,
   Terminal, Zap, Code2, ListTree, ChevronRight, Eye, Download, Upload,
   Moon, Sun, Keyboard, BarChart3, Clock, TrendingUp, Users,
-  Info, Globe, Shield, Server, X
+  Info, Globe, Shield, Server, X, MessageCircle, Send
 } from 'lucide-react';
 // Temporarily disabled to prevent crashes
 // import MonacoAetherEditor from './components/MonacoAetherEditor';
@@ -903,9 +903,11 @@ export default function AetherLangOmega() {
   using target "neuroaether" version ">=0.2";
   input text query;
   node Guard: guard mode="MODERATE";
+  node Planner: plan steps=3;
   node Chef: chef cuisine="greek", difficulty="medium", servings=4;
-  Guard -> Chef;
-  output text recipe from Chef;
+  node Summary: summarize length="detailed";
+  Guard -> Planner -> Chef -> Summary;
+  output text recipe from Summary;
 }`,
       safe_chat: `flow SafeChat {
   using target "neuroaether" version ">=0.2";
@@ -922,6 +924,7 @@ export default function AetherLangOmega() {
   node Research: research depth="comprehensive";
   node Consult: consult domain="business", framework="swot";
   node Market: market scope="global", timeframe="6months";
+  node Summary: summarize length="detailed";
   Guard -> Research -> Consult -> Market -> Summary;
   output text report from Summary;
 }`,
@@ -1286,6 +1289,27 @@ export default function AetherLangOmega() {
           icon: <Server className="w-6 h-6 text-orange-400" />,
           title: 'Technical Details',
           content: 'Version: 0.2.0 Pro\nEngine: NeuroAether Runtime\nBackend: FastAPI + Python 3.10\nFrontend: React + Vite + Tailwind CSS\nHosting: Hetzner Germany (EU compliance)\nDomain: neurodoc.app'
+        },
+        {
+          icon: <Send className="w-6 h-6 text-emerald-400" />,
+          title: 'AetherLang Telegram Bot — 15 AI Engines',
+          content: 'Try the AetherLang Omega Bot on Telegram (@aetherlang_bot) with 15 specialized AI engines:\n\n' +
+            '👨‍🍳 Chef Omega — Michelin recipes + HACCP + financials\n' +
+            '📈 APEX Strategy — Nobel-level business analysis\n' +
+            '🏛️ Grand Assembly — 26+ legendary archetypes + Gandalf Veto\n' +
+            '💼 McKinsey Consulting — SWOT + Roadmap + KPIs\n' +
+            '🔬 Deep Analysis Lab — Scientific analysis + Nobel insights\n' +
+            '📣 Viral Marketing — Campaign generator\n' +
+            '🎰 OPAP Oracle — LIVE lottery data + statistics\n' +
+            '📊 Crypto Intelligence — LIVE prices + APEX trading analysis\n' +
+            '📄 Trading Blueprint — Hedge fund-grade PDF reports\n' +
+            '⚗️ Molecular Gastronomy — Spherification, foams, sous-vide\n' +
+            '🔥 Chef Omega Neural — 15 Neural Agents + GAIA Brain\n' +
+            '🧠 Super Brain Nobel — Breakthrough innovation analysis\n' +
+            '🔒 Cyber Intelligence — Security + NIST/ISO frameworks\n' +
+            '🎓 Academic Research — arXiv, PubMed + 12 sources\n' +
+            '🌿 Terra Alchemica — Bio-Alchemy + Molecular + Monastic Olympus Council\n\n' +
+            '→ t.me/aetherlang_bot'
         }
       ]
     } : {
@@ -1311,6 +1335,27 @@ export default function AetherLangOmega() {
           icon: <Server className="w-6 h-6 text-orange-400" />,
           title: 'Τεχνικές Λεπτομέρειες',
           content: 'Έκδοση: 0.2.0 Pro\nΜηχανή: NeuroAether Runtime\nBackend: FastAPI + Python 3.10\nFrontend: React + Vite + Tailwind CSS\nΦιλοξενία: Hetzner Γερμανία (EU compliance)\nΤομέας: neurodoc.app'
+        },
+        {
+          icon: <Send className="w-6 h-6 text-emerald-400" />,
+          title: 'AetherLang Telegram Bot — 15 AI Engines',
+          content: 'Δοκιμάστε το AetherLang Omega Bot στο Telegram (@aetherlang_bot) με 15 εξειδικευμένες AI μηχανές:\n\n' +
+            '👨‍🍳 Chef Omega — Συνταγές Michelin + HACCP + οικονομικά\n' +
+            '📈 APEX Strategy — Ανάλυση επιχειρήσεων επιπέδου Nobel\n' +
+            '🏛️ Grand Assembly — 26+ αρχέτυπα + Gandalf Veto\n' +
+            '💼 McKinsey Consulting — SWOT + Roadmap + KPIs\n' +
+            '🔬 Deep Analysis Lab — Επιστημονική ανάλυση\n' +
+            '📣 Viral Marketing — Δημιουργία καμπανιών\n' +
+            '🎰 OPAP Oracle — ΖΩΝΤΑΝΑ δεδομένα κληρώσεων\n' +
+            '📊 Crypto Intelligence — ΖΩΝΤΑΝΕΣ τιμές + ανάλυση\n' +
+            '📄 Trading Blueprint — PDF αναφορές hedge fund\n' +
+            '⚗️ Μοριακή Γαστρονομία — Σφαιροποίηση, αφροί, sous-vide\n' +
+            '🔥 Chef Omega Neural — 15 Neural Agents + GAIA Brain\n' +
+            '🧠 Super Brain Nobel — Ανάλυση καινοτομίας\n' +
+            '🔒 Cyber Intelligence — Ασφάλεια + NIST/ISO\n' +
+            '🎓 Academic Research — arXiv, PubMed + 12 πηγές\n' +
+            '🌿 Terra Alchemica — Βιο-Αλχημεία + Μοριακή + Μοναστηριακό Συμβούλιο\n\n' +
+            '→ t.me/aetherlang_bot'
         }
       ]
     };
@@ -1716,6 +1761,18 @@ export default function AetherLangOmega() {
                   <path fillRule="evenodd" d="M4.25 2.5c-1.336 0-2.75 1.164-2.75 3 0 2.15 1.58 4.144 3.365 5.682A20.565 20.565 0 008 13.393a20.561 20.561 0 003.135-2.211C12.92 9.644 14.5 7.65 14.5 5.5c0-1.836-1.414-3-2.75-3-1.373 0-2.609.986-3.029 2.456a.75.75 0 01-1.442 0C6.859 3.486 5.623 2.5 4.25 2.5z"/>
                 </svg>
                 <span className="hidden sm:inline">{language === 'en' ? 'Sponsor' : 'Στήριξη'}</span>
+              </a>
+
+              {/* Telegram Bot Button */}
+              <a
+                href="https://t.me/aetherlang_bot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg text-white transition-all hover:scale-105 flex items-center gap-2 font-medium"
+                title={language === 'en' ? 'Try AetherLang Bot — 15 AI Engines on Telegram' : 'Δοκιμάστε το AetherLang Bot — 15 AI Engines στο Telegram'}
+              >
+                <Send className="w-4 h-4" />
+                <span className="hidden sm:inline">{language === 'en' ? 'Bot' : 'Bot'}</span>
               </a>
 
               <button
