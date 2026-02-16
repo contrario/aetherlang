@@ -22,6 +22,7 @@ import asyncio
 import logging
 import re
 import html
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -119,6 +120,90 @@ ALLOWED_USERS = [int(x) for x in os.getenv("ALLOWED_USERS", "").split(",") if x.
 POLL_INTERVAL = 4
 POLL_TIMEOUT = 180
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+
+# ═══════════════════════════════════════════════════════════════
+#  💰 TELEGRAM STARS CREDIT SYSTEM
+# ═══════════════════════════════════════════════════════════════
+
+CREDITS_DB = "/opt/aetherlang-bot/credits.db"
+
+# Credit costs per engine
+ENGINE_COSTS = {
+    "chef": 1, "molecular": 1, "omega": 1, "terra": 1,
+    "apex": 2, "consulting": 2, "lab": 2, "academic": 2,
+    "assembly": 2, "brain": 2,
+    "marketing": 1, "cyber": 1, "oracle": 1, "crypto": 1,
+    "blueprint": 3, "vision": 2, "vision_multi": 3,
+}
+
+# Credit packages (Stars → Credits)
+CREDIT_PACKAGES = {
+    "starter": {"title": "Starter Pack", "desc": "20 AI credits", "stars": 50, "credits": 20},
+    "pro": {"title": "Pro Pack", "desc": "75 AI credits — Best Value!", "stars": 150, "credits": 75},
+    "ultimate": {"title": "Ultimate Pack", "desc": "200 AI credits", "stars": 350, "credits": 200},
+}
+
+def init_credits_db():
+    """Initialize credits database on startup"""
+    conn = sqlite3.connect(CREDITS_DB)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_credits (
+        user_id INTEGER PRIMARY KEY,
+        credits INTEGER DEFAULT 5,
+        total_purchased INTEGER DEFAULT 0,
+        total_spent INTEGER DEFAULT 0,
+        first_seen TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_purchase TEXT
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER, type TEXT, amount INTEGER,
+        stars_paid INTEGER DEFAULT 0, engine TEXT DEFAULT '',
+        description TEXT, timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+    )""")
+    conn.commit()
+    conn.close()
+
+def get_credits(user_id: int) -> int:
+    """Get user's credit balance (creates user with 5 free credits if new)"""
+    conn = sqlite3.connect(CREDITS_DB)
+    c = conn.cursor()
+    c.execute("SELECT credits FROM user_credits WHERE user_id = ?", (user_id,))
+    row = c.fetchone()
+    if not row:
+        c.execute("INSERT INTO user_credits (user_id, credits) VALUES (?, 5)", (user_id,))
+        conn.commit()
+        conn.close()
+        return 5
+    conn.close()
+    return row[0]
+
+def spend_credits(user_id: int, amount: int, engine: str) -> bool:
+    """Deduct credits for engine use. Returns False if insufficient."""
+    current = get_credits(user_id)
+    if current < amount:
+        return False
+    conn = sqlite3.connect(CREDITS_DB)
+    c = conn.cursor()
+    c.execute("UPDATE user_credits SET credits = credits - ?, total_spent = total_spent + ? WHERE user_id = ?",
+              (amount, amount, user_id))
+    c.execute("INSERT INTO transactions (user_id, type, amount, engine, description) VALUES (?, 'spend', ?, ?, ?)",
+              (user_id, amount, engine, f"Used {engine} engine"))
+    conn.commit()
+    conn.close()
+    return True
+
+def add_credits(user_id: int, amount: int, stars_paid: int):
+    """Add credits after purchase"""
+    get_credits(user_id)  # ensure user exists
+    conn = sqlite3.connect(CREDITS_DB)
+    c = conn.cursor()
+    c.execute("UPDATE user_credits SET credits = credits + ?, total_purchased = total_purchased + ?, last_purchase = CURRENT_TIMESTAMP WHERE user_id = ?",
+              (amount, amount, user_id))
+    c.execute("INSERT INTO transactions (user_id, type, amount, stars_paid, description) VALUES (?, 'purchase', ?, ?, ?)",
+              (user_id, amount, stars_paid, f"Purchased {amount} credits for {stars_paid} Stars"))
+    conn.commit()
+    conn.close()
 
 # ═══════════════════════════════════════════════════════════════
 #  OPAP GAME IDS — Live Lottery Data
@@ -2814,10 +2899,27 @@ def format_response(data, engine_key: str) -> str:
 
 async def process_query(query: str, engine_key: str, user_id: int, chat_id: int) -> str:
     """Process user query through multi-layer AI pipeline"""
+
+    # 💰 Credit check before processing
+    cost = ENGINE_COSTS.get(engine_key, 1)
+    current_credits = get_credits(user_id)
+    if current_credits < cost:
+        buy_keyboard = {"inline_keyboard": [
+            [{"text": "🛒 Buy Credits", "callback_data": "buy:pro"}],
+        ]}
+        await tg("sendMessage", chat_id=chat_id,
+            text=f"💰 Not enough credits!\n\nNeeded: {cost} | Balance: {current_credits}\n\n🛒 Buy more credits:",
+            reply_markup=buy_keyboard, parse_mode="HTML")
+        return "Credits insufficient"
+
+    # Deduct credits
+    spend_credits(user_id, cost, engine_key)
+    remaining_credits = get_credits(user_id)
+
     language = detect_language(query, user_id)
     start_time = time.time()
     model_used = "gpt-4o"
-    
+
     # OPAP: Fetch live data first for oracle engine
     opap_context = ""
     if engine_key == "oracle":
@@ -3115,6 +3217,18 @@ async def process_query(query: str, engine_key: str, user_id: int, chat_id: int)
 
 async def _vision_chef_process(chat_id: int, user_id: int, file_ids: list, caption: str):
     """Process 1-10 photos through Vision Chef v4"""
+    # 💰 Credit check for Vision Chef
+    cost = 3 if len(file_ids) >= 3 else 2
+    if get_credits(user_id) < cost:
+        buy_keyboard = {"inline_keyboard": [
+            [{"text": "🛒 Buy Credits", "callback_data": "buy:pro"}],
+        ]}
+        await tg("sendMessage", chat_id=chat_id,
+            text=f"💰 Not enough credits for Vision Chef!\n\nNeeded: {cost} | Balance: {get_credits(user_id)}\n\n🛒 /buy to get more",
+            reply_markup=buy_keyboard, parse_mode="HTML")
+        return
+    spend_credits(user_id, cost, "vision" if len(file_ids) < 3 else "vision_multi")
+
     try:
         lang = detect_language(caption, user_id)
         diff = "medium"
@@ -3177,10 +3291,62 @@ async def _vision_chef_process(chat_id: int, user_id: int, file_ids: list, capti
         except Exception:
             pass
         os.remove(pdf_path)
+        # Credit footer for Vision Chef
+        remaining = get_credits(user_id)
+        await send_msg(chat_id, f"💰 Credits: {remaining} remaining (cost: {cost})")
     except Exception as e:
         log.error(f"Vision Chef error: {e}")
         await send_msg(chat_id, f"Vision Chef error: {esc(str(e)[:300])}")
     return
+
+# ═══════════════════════════════════════════════════════════════
+#  💰 TELEGRAM STARS PAYMENT HANDLERS
+# ═══════════════════════════════════════════════════════════════
+
+async def handle_pre_checkout(update: dict):
+    """Answer pre-checkout query — MUST respond within 10 seconds"""
+    pcq = update.get("pre_checkout_query", {})
+    if not pcq:
+        return
+    try:
+        await tg("answerPreCheckoutQuery",
+            pre_checkout_query_id=pcq["id"],
+            ok=True)
+        log.info(f"Pre-checkout approved for user {pcq.get('from', {}).get('id')}")
+    except Exception as e:
+        log.error(f"Pre-checkout error: {e}")
+
+async def handle_successful_payment(update: dict):
+    """Process successful Telegram Stars payment"""
+    msg = update.get("message", {})
+    payment = msg.get("successful_payment", {})
+    if not payment:
+        return
+
+    chat_id = msg.get("chat", {}).get("id")
+    user_id = msg.get("from", {}).get("id", 0)
+    payload = payment.get("invoice_payload", "")
+    stars = payment.get("total_amount", 0)
+
+    # Parse payload: credits_starter_12345
+    parts = payload.split("_")
+    package = parts[1] if len(parts) >= 2 else ""
+
+    credit_map = {"starter": 20, "pro": 75, "ultimate": 200}
+    credits_to_add = credit_map.get(package, 0)
+
+    if credits_to_add > 0:
+        add_credits(user_id, credits_to_add, stars)
+        new_balance = get_credits(user_id)
+        log.info(f"💰 Payment: user {user_id} bought {credits_to_add} credits for {stars} Stars")
+        await send_msg(chat_id,
+            f"✅ <b>Payment Successful!</b>\n\n"
+            f"⭐ Paid: {stars} Stars\n"
+            f"💰 Added: +{credits_to_add} credits\n"
+            f"📊 New balance: {new_balance} credits\n\n"
+            f"Enjoy your AI engines! 🚀")
+    else:
+        log.warning(f"Unknown payment payload: {payload}")
 
 # ═══════════════════════════════════════════════════════════════
 #  TELEGRAM MESSAGE HANDLER
@@ -3296,9 +3462,12 @@ The world's most advanced AI orchestration platform — now in your pocket.
 
 ⚡ <b>Commands:</b>
 /engines — List all engines
-/assembly_modes — Assembly configurations  
+/assembly_modes — Assembly configurations
 /status — System health check
 /lang_el — Ελληνικά | /lang_en — English
+
+💰 <b>Credits:</b> /credits — Check balance | /buy — Get more
+🆕 New users get 5 FREE credits!
 
 Built with ❤️ by Hlia — From Kitchen to Code
 🔄 OpenRouter • 🛡️ FDA Safety • 🎰 LIVE OPAP • 📊 Live Markets"""
@@ -3346,7 +3515,71 @@ Built with ❤️ by Hlia — From Kitchen to Code
 🕐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"""
         await send_msg(chat_id, status)
         return
-    
+
+    # ── CREDIT & PAYMENT COMMANDS ──
+
+    if text in ["/credits", "/balance"]:
+        credits = get_credits(user_id)
+        msg = f"""💰 <b>Your Credits: {credits}</b>
+
+📊 Credit costs:
+• Recipe/Standard engines: 1 credit
+• Analysis/Strategy engines: 2 credits
+• Blueprint PDF: 3 credits
+• Vision Chef (photo): 2 credits
+
+🛒 Buy more: /buy"""
+        await send_msg(chat_id, msg)
+        return
+
+    if text in ["/buy", "/shop", "/store"]:
+        keyboard = {"inline_keyboard": [
+            [{"text": "⭐ 50 Stars → 20 Credits", "callback_data": "buy:starter"}],
+            [{"text": "⭐ 150 Stars → 75 Credits (Best Value)", "callback_data": "buy:pro"}],
+            [{"text": "⭐ 350 Stars → 200 Credits (Ultimate)", "callback_data": "buy:ultimate"}],
+        ]}
+        credits = get_credits(user_id)
+        await tg("sendMessage", chat_id=chat_id,
+            text=f"🛒 <b>Buy Credits</b>\n\nCurrent balance: {credits} credits\n\nChoose a package:",
+            reply_markup=keyboard, parse_mode="HTML")
+        return
+
+    if text.startswith("/admin_credits") and user_id in ALLOWED_USERS:
+        parts = text.split()
+        if len(parts) == 3:
+            try:
+                target = int(parts[1])
+                amount = int(parts[2])
+                add_credits(target, amount, 0)
+                await send_msg(chat_id, f"✅ Added {amount} credits to user {target}")
+            except ValueError:
+                await send_msg(chat_id, "⚠️ Usage: /admin_credits USER_ID AMOUNT")
+        else:
+            await send_msg(chat_id, "⚠️ Usage: /admin_credits USER_ID AMOUNT")
+        return
+
+    if text == "/admin_stats" and user_id in ALLOWED_USERS:
+        conn = sqlite3.connect(CREDITS_DB)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*), SUM(credits), SUM(total_purchased) FROM user_credits")
+        users, total_credits, total_purchased = c.fetchone()
+        c.execute("SELECT SUM(stars_paid) FROM transactions WHERE type='purchase'")
+        total_stars = c.fetchone()[0] or 0
+        c.execute("SELECT engine, COUNT(*), SUM(amount) FROM transactions WHERE type='spend' GROUP BY engine ORDER BY COUNT(*) DESC")
+        engine_stats = c.fetchall()
+        conn.close()
+
+        lines = [f"📊 <b>Admin Stats</b>\n",
+                 f"👤 Users: {users}",
+                 f"⭐ Total Stars earned: {total_stars}",
+                 f"💰 Total credits purchased: {total_purchased or 0}",
+                 f"📊 Credits in circulation: {total_credits or 0}\n",
+                 f"<b>Engine Usage:</b>"]
+        for eng, count, spent in engine_stats[:10]:
+            lines.append(f"  {eng}: {count} uses ({spent} credits)")
+        await send_msg(chat_id, "\n".join(lines))
+        return
+
     # Language selection
     if text in ["/lang_el", "/el", "/greek", "/ελληνικά"]:
         user_language_prefs[user_id] = "el"
@@ -3411,9 +3644,14 @@ Built with ❤️ by Hlia — From Kitchen to Code
     
     try:
         response = await process_query(query, engine_key, user_id, chat_id)
+        # Append credit info footer (unless it was an insufficient credits message)
+        if response != "Credits insufficient":
+            cost = ENGINE_COSTS.get(engine_key, 1)
+            remaining = get_credits(user_id)
+            response += f"\n\n💰 Credits: {remaining} remaining (cost: {cost})"
         await send_msg(chat_id, response)
         # Save for PDF generation
-        if engine_key != "blueprint":
+        if engine_key != "blueprint" and response != "Credits insufficient":
             user_last_response[user_id] = {"text": response, "engine": engine_key, "query": query}
             pdf_btn = {"inline_keyboard": [[{"text": "📄 PDF Report", "callback_data": f"pdf:{engine_key}"}]]}
             await tg("sendMessage", chat_id=chat_id, text="📄 Θέλεις PDF αναφορά;", reply_markup=pdf_btn, parse_mode="HTML")
@@ -3480,6 +3718,27 @@ async def handle_callback(update: dict):
             await send_msg(chat_id, f"❌ PDF error: {esc(str(e)[:200])}")
         return
 
+    # 💰 Buy credits — send Telegram Stars invoice
+    if data.startswith("buy:"):
+        package = data.split(":")[1]
+        pkg = CREDIT_PACKAGES.get(package)
+        if not pkg:
+            return
+        try:
+            await tg("sendInvoice",
+                chat_id=chat_id,
+                title=pkg["title"],
+                description=pkg["desc"],
+                payload=f"credits_{package}_{user_id}",
+                provider_token="",  # Empty for Telegram Stars
+                currency="XTR",
+                prices=[{"label": pkg["title"], "amount": pkg["stars"]}],
+            )
+        except Exception as e:
+            log.error(f"sendInvoice error: {e}")
+            await send_msg(chat_id, f"❌ Payment error: {esc(str(e)[:200])}")
+        return
+
     if data.startswith("engine:"):
         engine_key = data.split(":", 1)[1]
         engine = ENGINES.get(engine_key, ENGINES["brain"])
@@ -3502,6 +3761,10 @@ async def main():
     log.info(f"OPAP Games: {len(OPAP_GAMES)}")
     log.info(f"Allowed users: {ALLOWED_USERS}")
     log.info("=" * 60)
+
+    # Initialize credits database
+    init_credits_db()
+    log.info("💰 Credits database initialized")
     
     # Delete webhook
     await tg("deleteWebhook", drop_pending_updates=True)
@@ -3515,7 +3778,7 @@ async def main():
             client = await get_client()
             r = await client.get(
                 f"{TELEGRAM_API}/getUpdates",
-                params={"offset": offset, "timeout": 30, "allowed_updates": ["message", "callback_query"]},
+                params={"offset": offset, "timeout": 30, "allowed_updates": ["message", "callback_query", "pre_checkout_query"]},
                 timeout=40
             )
             data = r.json()
@@ -3535,12 +3798,18 @@ async def main():
             
             for update in data.get("result", []):
                 offset = update["update_id"] + 1
-                
+
                 try:
-                    if "message" in update:
-                        await handle_message(update)
+                    if "pre_checkout_query" in update:
+                        await handle_pre_checkout(update)
                     elif "callback_query" in update:
                         await handle_callback(update)
+                    elif "message" in update:
+                        msg = update["message"]
+                        if "successful_payment" in msg:
+                            await handle_successful_payment(update)
+                        else:
+                            await handle_message(update)
                 except Exception as e:
                     log.error(f"Handler error: {e}")
                     import traceback
