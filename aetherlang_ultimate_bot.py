@@ -3559,6 +3559,29 @@ Built with ❤️ by Hlia — From Kitchen to Code
             await send_msg(chat_id, "⚠️ Usage: /admin_credits USER_ID AMOUNT")
         return
 
+    if text.startswith("/refund") and user_id in ALLOWED_USERS:
+        parts = text.split()
+        if len(parts) == 3:
+            try:
+                target = int(parts[1])
+                amount = int(parts[2])
+                current = get_credits(target)
+                conn = sqlite3.connect(CREDITS_DB)
+                c = conn.cursor()
+                c.execute("UPDATE user_credits SET credits = credits + ?, total_spent = total_spent - ? WHERE user_id = ?",
+                          (amount, amount, target))
+                c.execute("INSERT INTO transactions (user_id, type, amount, engine, description) VALUES (?, 'refund', ?, '', ?)",
+                          (target, amount, f"Admin refund of {amount} credits"))
+                conn.commit()
+                conn.close()
+                new_balance = get_credits(target)
+                await send_msg(chat_id, f"✅ Refunded {amount} credits to user {target}\n📊 Balance: {current} → {new_balance}")
+            except ValueError:
+                await send_msg(chat_id, "⚠️ Usage: /refund USER_ID AMOUNT")
+        else:
+            await send_msg(chat_id, "⚠️ Usage: /refund USER_ID AMOUNT")
+        return
+
     if text == "/admin_stats" and user_id in ALLOWED_USERS:
         conn = sqlite3.connect(CREDITS_DB)
         c = conn.cursor()
