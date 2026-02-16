@@ -22,27 +22,26 @@ Users pay with Telegram Stars to get credits for using AI engines.
 ## PRICING MODEL
 
 ### Credit Packages:
-| Package | Stars | Credits | Best For |
-|---------|-------|---------|----------|
-| Starter | 50 ⭐ | 20 credits | Try it out |
-| Pro | 150 ⭐ | 75 credits | Regular use |
-| Ultimate | 350 ⭐ | 200 credits | Power user |
+| Package | Stars | Credits | Cost/Credit |
+|---------|-------|---------|-------------|
+| Starter | 150 ⭐ | 15 credits | 10 Stars/credit |
+| Pro | 400 ⭐ | 50 credits | 8 Stars/credit |
+| Ultimate | 900 ⭐ | 150 credits | 6 Stars/credit |
 
 ### Credit Costs Per Engine:
-| Engine | Credits | Why |
-|--------|---------|-----|
-| chef, molecular, omega, terra | 1 credit | Standard recipe |
-| apex, consulting, lab, academic | 2 credits | Complex analysis |
-| assembly, brain | 2 credits | Multi-agent |
-| marketing, cyber | 1 credit | Standard |
-| oracle | 1 credit | OPAP data |
-| crypto | 1 credit | Market data |
-| blueprint | 3 credits | PDF generation |
-| Vision Chef (photo) | 2 credits | GPT-4o vision |
-| Vision Chef multi (3+ photos) | 3 credits | Multiple GPT-4o calls |
+| Engine | Credits | Stars equiv (Pro) |
+|--------|---------|-------------------|
+| chef, molecular, omega, terra | 2 credits | ~16 Stars |
+| marketing, cyber, oracle | 2 credits | ~16 Stars |
+| crypto (with 5 exchanges) | 3 credits | ~24 Stars |
+| apex, consulting, lab, academic | 4 credits | ~32 Stars |
+| assembly, brain | 4 credits | ~32 Stars |
+| blueprint (PDF) | 6 credits | ~48 Stars |
+| Vision Chef (1-2 photos) | 5 credits | ~40 Stars |
+| Vision Chef (3+ photos) | 8 credits | ~64 Stars |
 
 ### Free Tier:
-- Every new user gets 5 FREE credits on first /start
+- Every new user gets 3 FREE credits on first /start (enough for 1 standard engine test)
 - /help and /status are always free
 - /engines list is free
 
@@ -55,7 +54,7 @@ Create/use file: `/opt/aetherlang-bot/credits.db`
 ```sql
 CREATE TABLE IF NOT EXISTS user_credits (
     user_id INTEGER PRIMARY KEY,
-    credits INTEGER DEFAULT 5,
+    credits INTEGER DEFAULT 3,
     total_purchased INTEGER DEFAULT 0,
     total_spent INTEGER DEFAULT 0,
     first_seen TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -85,7 +84,7 @@ def init_credits_db():
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS user_credits (
         user_id INTEGER PRIMARY KEY,
-        credits INTEGER DEFAULT 5,
+        credits INTEGER DEFAULT 3,
         total_purchased INTEGER DEFAULT 0,
         total_spent INTEGER DEFAULT 0,
         first_seen TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -106,10 +105,10 @@ def get_credits(user_id: int) -> int:
     c.execute("SELECT credits FROM user_credits WHERE user_id = ?", (user_id,))
     row = c.fetchone()
     if not row:
-        c.execute("INSERT INTO user_credits (user_id, credits) VALUES (?, 5)", (user_id,))
+        c.execute("INSERT INTO user_credits (user_id, credits) VALUES (?, 3)", (user_id,))
         conn.commit()
         conn.close()
-        return 5
+        return 3
     conn.close()
     return row[0]
 
@@ -140,11 +139,11 @@ def add_credits(user_id: int, amount: int, stars_paid: int):
 
 # Credit costs per engine
 ENGINE_COSTS = {
-    "chef": 1, "molecular": 1, "omega": 1, "terra": 1,
-    "apex": 2, "consulting": 2, "lab": 2, "academic": 2,
-    "assembly": 2, "brain": 2,
-    "marketing": 1, "cyber": 1, "oracle": 1, "crypto": 1,
-    "blueprint": 3, "vision": 2, "vision_multi": 3,
+    "chef": 2, "molecular": 2, "omega": 2, "terra": 2,
+    "apex": 4, "consulting": 4, "lab": 4, "academic": 4,
+    "assembly": 4, "brain": 4,
+    "marketing": 2, "cyber": 2, "oracle": 2, "crypto": 3,
+    "blueprint": 6, "vision": 5, "vision_multi": 8,
 }
 ```
 
@@ -157,10 +156,11 @@ if text == "/credits" or text == "/balance":
     msg = f"""💰 <b>Your Credits: {credits}</b>
 
 📊 Credit costs:
-- Recipe/Standard engines: 1 credit
-- Analysis/Strategy engines: 2 credits  
-- Blueprint PDF: 3 credits
-- Vision Chef (photo): 2 credits
+- Recipe/Standard engines: 2 credits
+- Crypto (5 exchanges): 3 credits
+- Analysis/Strategy engines: 4 credits
+- Blueprint PDF: 6 credits
+- Vision Chef (photo): 5-8 credits
 
 🛒 Buy more: /buy"""
     await send_msg(chat_id, msg)
@@ -171,9 +171,9 @@ if text == "/credits" or text == "/balance":
 ```python
 if text == "/buy" or text == "/shop" or text == "/store":
     keyboard = {"inline_keyboard": [
-        [{"text": "⭐ 50 Stars → 20 Credits", "callback_data": "buy:starter"}],
-        [{"text": "⭐ 150 Stars → 75 Credits (Best Value)", "callback_data": "buy:pro"}],
-        [{"text": "⭐ 350 Stars → 200 Credits (Ultimate)", "callback_data": "buy:ultimate"}],
+        [{"text": "⭐ 150 Stars → 15 Credits", "callback_data": "buy:starter"}],
+        [{"text": "⭐ 400 Stars → 50 Credits (Best Value)", "callback_data": "buy:pro"}],
+        [{"text": "⭐ 900 Stars → 150 Credits (Ultimate)", "callback_data": "buy:ultimate"}],
     ]}
     credits = get_credits(user_id)
     await tg("sendMessage", chat_id=chat_id, 
@@ -188,9 +188,9 @@ if text == "/buy" or text == "/shop" or text == "/store":
 if data.startswith("buy:"):
     package = data.split(":")[1]
     packages = {
-        "starter": {"title": "Starter Pack", "desc": "20 AI credits", "stars": 50, "credits": 20},
-        "pro": {"title": "Pro Pack", "desc": "75 AI credits — Best Value!", "stars": 150, "credits": 75},
-        "ultimate": {"title": "Ultimate Pack", "desc": "200 AI credits", "stars": 350, "credits": 200},
+        "starter": {"title": "Starter Pack", "desc": "15 AI credits", "stars": 150, "credits": 15},
+        "pro": {"title": "Pro Pack", "desc": "50 AI credits — Best Value!", "stars": 400, "credits": 50},
+        "ultimate": {"title": "Ultimate Pack", "desc": "150 AI credits", "stars": 900, "credits": 150},
     }
     pkg = packages.get(package)
     if not pkg:
@@ -240,7 +240,7 @@ async def handle_successful_payment(update: dict):
     parts = payload.split("_")
     package = parts[1] if len(parts) >= 2 else ""
     
-    credit_map = {"starter": 20, "pro": 75, "ultimate": 200}
+    credit_map = {"starter": 15, "pro": 50, "ultimate": 150}
     credits_to_add = credit_map.get(package, 0)
     
     if credits_to_add > 0:
@@ -277,7 +277,7 @@ remaining = get_credits(user_id)
 
 In Vision Chef handler (_vision_chef_process), before processing:
 ```python
-cost = 3 if len(file_ids) >= 3 else 2
+cost = 8 if len(file_ids) >= 3 else 5
 if get_credits(user_id) < cost:
     await send_msg(chat_id, "💰 Not enough credits for Vision Chef!\n🛒 /buy to get more")
     return
@@ -369,7 +369,7 @@ if text == "/admin_stats" and user_id in ALLOWED_USERS:
 
 ## TESTING CHECKLIST
 
-1. `/credits` — Shows 5 free credits for new user
+1. `/credits` — Shows 3 free credits for new user
 2. `/buy` — Shows 3 packages with inline buttons
 3. Click "Pro Pack" — Invoice appears with Stars payment
 4. Complete payment — Credits added, confirmation message

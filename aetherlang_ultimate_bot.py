@@ -129,18 +129,18 @@ CREDITS_DB = "/opt/aetherlang-bot/credits.db"
 
 # Credit costs per engine
 ENGINE_COSTS = {
-    "chef": 1, "molecular": 1, "omega": 1, "terra": 1,
-    "apex": 2, "consulting": 2, "lab": 2, "academic": 2,
-    "assembly": 2, "brain": 2,
-    "marketing": 1, "cyber": 1, "oracle": 1, "crypto": 1,
-    "blueprint": 3, "vision": 2, "vision_multi": 3,
+    "chef": 2, "molecular": 2, "omega": 2, "terra": 2,
+    "apex": 4, "consulting": 4, "lab": 4, "academic": 4,
+    "assembly": 4, "brain": 4,
+    "marketing": 2, "cyber": 2, "oracle": 2, "crypto": 3,
+    "blueprint": 6, "vision": 5, "vision_multi": 8,
 }
 
 # Credit packages (Stars → Credits)
 CREDIT_PACKAGES = {
-    "starter": {"title": "Starter Pack", "desc": "20 AI credits", "stars": 50, "credits": 20},
-    "pro": {"title": "Pro Pack", "desc": "75 AI credits — Best Value!", "stars": 150, "credits": 75},
-    "ultimate": {"title": "Ultimate Pack", "desc": "200 AI credits", "stars": 350, "credits": 200},
+    "starter": {"title": "Starter Pack", "desc": "15 AI credits", "stars": 150, "credits": 15},
+    "pro": {"title": "Pro Pack", "desc": "50 AI credits — Best Value!", "stars": 400, "credits": 50},
+    "ultimate": {"title": "Ultimate Pack", "desc": "150 AI credits", "stars": 900, "credits": 150},
 }
 
 def init_credits_db():
@@ -149,7 +149,7 @@ def init_credits_db():
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS user_credits (
         user_id INTEGER PRIMARY KEY,
-        credits INTEGER DEFAULT 5,
+        credits INTEGER DEFAULT 3,
         total_purchased INTEGER DEFAULT 0,
         total_spent INTEGER DEFAULT 0,
         first_seen TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -165,16 +165,16 @@ def init_credits_db():
     conn.close()
 
 def get_credits(user_id: int) -> int:
-    """Get user's credit balance (creates user with 5 free credits if new)"""
+    """Get user's credit balance (creates user with 3 free credits if new)"""
     conn = sqlite3.connect(CREDITS_DB)
     c = conn.cursor()
     c.execute("SELECT credits FROM user_credits WHERE user_id = ?", (user_id,))
     row = c.fetchone()
     if not row:
-        c.execute("INSERT INTO user_credits (user_id, credits) VALUES (?, 5)", (user_id,))
+        c.execute("INSERT INTO user_credits (user_id, credits) VALUES (?, 3)", (user_id,))
         conn.commit()
         conn.close()
-        return 5
+        return 3
     conn.close()
     return row[0]
 
@@ -2901,7 +2901,7 @@ async def process_query(query: str, engine_key: str, user_id: int, chat_id: int)
     """Process user query through multi-layer AI pipeline"""
 
     # 💰 Credit check before processing
-    cost = ENGINE_COSTS.get(engine_key, 1)
+    cost = ENGINE_COSTS.get(engine_key, 2)
     current_credits = get_credits(user_id)
     if current_credits < cost:
         buy_keyboard = {"inline_keyboard": [
@@ -3218,7 +3218,7 @@ async def process_query(query: str, engine_key: str, user_id: int, chat_id: int)
 async def _vision_chef_process(chat_id: int, user_id: int, file_ids: list, caption: str):
     """Process 1-10 photos through Vision Chef v4"""
     # 💰 Credit check for Vision Chef
-    cost = 3 if len(file_ids) >= 3 else 2
+    cost = 8 if len(file_ids) >= 3 else 5
     if get_credits(user_id) < cost:
         buy_keyboard = {"inline_keyboard": [
             [{"text": "🛒 Buy Credits", "callback_data": "buy:pro"}],
@@ -3332,7 +3332,7 @@ async def handle_successful_payment(update: dict):
     parts = payload.split("_")
     package = parts[1] if len(parts) >= 2 else ""
 
-    credit_map = {"starter": 20, "pro": 75, "ultimate": 200}
+    credit_map = {"starter": 15, "pro": 50, "ultimate": 150}
     credits_to_add = credit_map.get(package, 0)
 
     if credits_to_add > 0:
@@ -3467,7 +3467,7 @@ The world's most advanced AI orchestration platform — now in your pocket.
 /lang_el — Ελληνικά | /lang_en — English
 
 💰 <b>Credits:</b> /credits — Check balance | /buy — Get more
-🆕 New users get 5 FREE credits!
+🆕 New users get 3 FREE credits!
 
 Built with ❤️ by Hlia — From Kitchen to Code
 🔄 OpenRouter • 🛡️ FDA Safety • 🎰 LIVE OPAP • 📊 Live Markets"""
@@ -3523,10 +3523,11 @@ Built with ❤️ by Hlia — From Kitchen to Code
         msg = f"""💰 <b>Your Credits: {credits}</b>
 
 📊 Credit costs:
-• Recipe/Standard engines: 1 credit
-• Analysis/Strategy engines: 2 credits
-• Blueprint PDF: 3 credits
-• Vision Chef (photo): 2 credits
+• Recipe/Standard engines: 2 credits
+• Crypto (5 exchanges): 3 credits
+• Analysis/Strategy engines: 4 credits
+• Blueprint PDF: 6 credits
+• Vision Chef (photo): 5-8 credits
 
 🛒 Buy more: /buy"""
         await send_msg(chat_id, msg)
@@ -3534,9 +3535,9 @@ Built with ❤️ by Hlia — From Kitchen to Code
 
     if text in ["/buy", "/shop", "/store"]:
         keyboard = {"inline_keyboard": [
-            [{"text": "⭐ 50 Stars → 20 Credits", "callback_data": "buy:starter"}],
-            [{"text": "⭐ 150 Stars → 75 Credits (Best Value)", "callback_data": "buy:pro"}],
-            [{"text": "⭐ 350 Stars → 200 Credits (Ultimate)", "callback_data": "buy:ultimate"}],
+            [{"text": "⭐ 150 Stars → 15 Credits", "callback_data": "buy:starter"}],
+            [{"text": "⭐ 400 Stars → 50 Credits (Best Value)", "callback_data": "buy:pro"}],
+            [{"text": "⭐ 900 Stars → 150 Credits (Ultimate)", "callback_data": "buy:ultimate"}],
         ]}
         credits = get_credits(user_id)
         await tg("sendMessage", chat_id=chat_id,
@@ -3646,7 +3647,7 @@ Built with ❤️ by Hlia — From Kitchen to Code
         response = await process_query(query, engine_key, user_id, chat_id)
         # Append credit info footer (unless it was an insufficient credits message)
         if response != "Credits insufficient":
-            cost = ENGINE_COSTS.get(engine_key, 1)
+            cost = ENGINE_COSTS.get(engine_key, 2)
             remaining = get_credits(user_id)
             response += f"\n\n💰 Credits: {remaining} remaining (cost: {cost})"
         await send_msg(chat_id, response)
