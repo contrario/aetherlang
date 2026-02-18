@@ -29,7 +29,7 @@ All user inputs are validated and sanitized server-side before processing. The s
 
 | Engine | Node Type | V3 Highlights |
 |--------|-----------|---------------|
-| 🧑‍🍳 Chef Omega | `chef` | 17 mandatory sections: food cost%, HACCP, thermal curves, MacYuFBI matrix, texture architecture, allergen matrix (14 EU), dietary transformer, wine pairing, plating blueprint, zero waste, kitchen timeline |
+| 🍳 Chef Omega | `chef` | 17 mandatory sections: food cost%, HACCP, thermal curves, MacYuFBI matrix, texture architecture, allergen matrix (14 EU), dietary transformer, wine pairing, plating blueprint, zero waste, kitchen timeline |
 | ⚗️ APEIRON Molecular | `molecular` | Rheology dashboard, phase diagrams, hydrocolloid specs (Agar/Alginate/Gellan/Xanthan), FMEA failure analysis, equipment calibration, sensory science metrics |
 | 📈 APEX Strategy | `apex` | Game theory + Nash equilibrium, Monte Carlo (10K simulations), behavioral economics, decision trees, competitive war gaming, unit economics (CAC/LTV), Blue Ocean canvas, OKR generator |
 | 🧠 GAIA Brain | `assembly` | 12 neurons voting system (supermajority 8/12), disagreement protocol, Gandalf VETO power, devil's advocate, confidence heatmap, 7 archetypes |
