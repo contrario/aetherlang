@@ -1,66 +1,139 @@
-# AetherLang Ω — AI Workflow Orchestration
+# AetherLang Ω V3 — AI Workflow Orchestration Skill
 
-> Production-grade DSL for building AI workflows with 28 node types and enterprise security.
+> The world's most advanced AI workflow orchestration platform. 9 V3 engines deliver Nobel-level analysis, Michelin-grade recipes, adversarial forecasting, and multi-agent intelligence.
+
+**Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang)
+**Homepage**: [neurodoc.app/aether-nexus-omega-dsl](https://neurodoc.app/aether-nexus-omega-dsl)
+**Author**: NeuroAether (info@neurodoc.app)
+**License**: MIT
+
+## Privacy & Data Handling
+
+⚠️ **External API Notice**: This skill sends user-provided flow code and query text to the AetherLang API at `api.neurodoc.app` for processing. By using this skill, you consent to this data transmission.
+
+- **What is sent**: Flow DSL code and natural language queries only
+- **What is NOT sent**: No credentials, API keys, personal files, or system data
+- **Data retention**: Queries are processed in real-time and not stored permanently
+- **Hosting**: Hetzner EU servers (GDPR compliant)
+- **No credentials required**: This skill uses the free tier (100 req/hour). No API keys needed.
+
+Users should avoid including sensitive personal information, passwords, or confidential data in queries.
 
 ## Overview
 
-AetherLang Ω is a visual programming language for AI that orchestrates multi-model workflows with built-in safety, debugging, and real-time collaboration. It processes natural language queries through specialized AI engines.
+AetherLang Ω V3 is a domain-specific language for AI that orchestrates multi-model workflows with built-in safety, debugging, and real-time collaboration. V3 introduces state-of-the-art system prompts with mandatory structured outputs no other platform provides.
 
-## Domains
+All user inputs are validated and sanitized server-side before processing. The security middleware source code is publicly available in the [GitHub repository](https://github.com/contrario/aetherlang/blob/main/aetherlang/middleware/security.py).
 
-| Domain | Description | Output |
-|--------|-------------|--------|
-| Chef Omega | Michelin-grade recipes with HACCP, costs, MacYuFBI flavor system | Full recipe with financials |
-| APEX Strategy | Nobel-level business analysis (McKinsey/HBR quality) | 9-section strategic report |
-| Grand Assembly | 26 legendary AI archetypes with Gandalf Safety Veto | Multi-perspective analysis |
-| Consulting | SWOT, roadmaps, KPIs with implementation phases | Strategic consulting report |
-| Lab | Scientific analysis across 50 domains | Research report with risk matrix |
-| Marketing | Viral campaign generation with content calendars | Campaign strategy |
-| OPAP Oracle | Live Greek lottery statistics and analysis | Statistical analysis with numbers |
-| Cyber | Threat assessment with defense strategies | Security intelligence report |
-| Academic | Multi-source research (arXiv, PubMed, OpenAlex) | Research synthesis |
+## V3 Engines — State-of-the-Art
 
-## Security Features
+| Engine | Node Type | V3 Highlights |
+|--------|-----------|---------------|
+| 🧑‍🍳 Chef Omega | `chef` | 17 mandatory sections: food cost%, HACCP, thermal curves, MacYuFBI matrix, texture architecture, allergen matrix (14 EU), dietary transformer, wine pairing, plating blueprint, zero waste, kitchen timeline |
+| ⚗️ APEIRON Molecular | `molecular` | Rheology dashboard, phase diagrams, hydrocolloid specs (Agar/Alginate/Gellan/Xanthan), FMEA failure analysis, equipment calibration, sensory science metrics |
+| 📈 APEX Strategy | `apex` | Game theory + Nash equilibrium, Monte Carlo (10K simulations), behavioral economics, decision trees, competitive war gaming, unit economics (CAC/LTV), Blue Ocean canvas, OKR generator |
+| 🧠 GAIA Brain | `assembly` | 12 neurons voting system (supermajority 8/12), disagreement protocol, Gandalf VETO power, devil's advocate, confidence heatmap, 7 archetypes |
+| 🔮 Oracle | `oracle` | Bayesian updating (prior→evidence→posterior), signal vs noise scoring, temporal resolution (7d/30d/180d), black swan scanner, adversarial red team, Kelly criterion bet sizing |
+| 💼 NEXUS-7 Consult | `consulting` | Causal loop diagrams, theory of constraints, Wardley maps, ADKAR change management, anti-pattern library, system dynamics modeling |
+| 📊 Market Intel | `marketing` | TAM/SAM/SOM, category design, Porter's 5 Forces, pricing elasticity, network effects, viral coefficient (K-factor), customer segmentation AI |
+| 🔬 Research Lab | `lab` | Evidence grading (A-D levels), contradiction detector, knowledge graph, reproducibility score (X/10), cross-disciplinary bridges, research gap map |
+| 📉 Data Analyst | `analyst` | Auto-detective (outliers/missing/duplicates), statistical test selector, anomaly detection, predictive modeling (R²/RMSE), cohort/funnel analysis, causal inference |
 
-AetherLang includes enterprise-grade security:
+## API Endpoint
+```
+POST https://api.neurodoc.app/aetherlang/execute
+Content-Type: application/json
+```
 
-- **Input Validation**: All inputs validated server-side (length limits, character filtering)
-- **Injection Prevention**: Pattern detection blocks code injection, SQL injection, XSS, prompt manipulation
-- **Rate Limiting**: 100 requests/hour per client with burst protection (10/10s)
-- **Safety Guards**: Built-in GUARD node with STRICT/MODERATE/PERMISSIVE modes
+### Request Format
+```json
+{
+  "code": "<aetherlang_flow>",
+  "query": "<user_input>"
+}
+```
+
+### Building Flows
+```
+flow <FlowName> {
+  using target "neuroaether" version ">=0.2";
+  input text query;
+  node <NodeName>: <engine_type> <parameters>;
+  output text result from <NodeName>;
+}
+```
+
+### Example Flows
+
+#### Chef Omega V3 — Full Restaurant Consulting
+```
+flow Chef {
+  using target "neuroaether" version ">=0.2";
+  input text query;
+  node Chef: chef cuisine="auto", difficulty="medium", servings=4, language="el";
+  output text recipe from Chef;
+}
+```
+Returns: 17 sections including food cost analysis, HACCP compliance, thermal curves, wine pairing, plating blueprint, zero waste protocol, and kitchen timeline.
+
+#### APEX Strategy V3 — Nobel-Level Business Analysis
+```
+flow Strategy {
+  using target "neuroaether" version ">=0.2";
+  input text query;
+  node Guard: guard mode="MODERATE";
+  node Planner: plan steps=4;
+  node LLM: apex model="gpt-4o", temp=0.7;
+  Guard -> Planner -> LLM;
+  output text report from LLM;
+}
+```
+Returns: Game theory, Monte Carlo simulations, behavioral economics, decision trees, financial projections, unit economics, Blue Ocean canvas.
+
+#### Multi-Engine Pipeline
+```
+flow FullAnalysis {
+  using target "neuroaether" version ">=0.2";
+  input text query;
+  node Guard: guard mode="STRICT";
+  node Research: lab domain="business";
+  node Market: marketing analysis="competitive";
+  node Strategy: apex analysis="strategic";
+  Guard -> Research -> Market -> Strategy;
+  output text report from Strategy;
+}
+```
+
+## Security Architecture
+
+Security middleware source code: [middleware/security.py](https://github.com/contrario/aetherlang/blob/main/aetherlang/middleware/security.py)
+
+### Input Validation (Server-Side)
+- **Field whitelist**: Only `code`, `query`, `language` fields accepted
+- **Length enforcement**: Query max 5000 chars, Code max 10000 chars, Body max 50KB
+- **Type validation**: All fields type-checked before processing
+
+### Injection Prevention
+Blocks: code execution (`eval`, `exec`), SQL injection, XSS, template injection, OS commands, prompt manipulation.
+
+### Rate Limiting
+- **Free tier**: 100 req/hour, 10 req/10s burst (no credentials needed)
+
+### Safety Guards
+- **GUARD node**: STRICT/MODERATE/PERMISSIVE content filtering
 - **Gandalf Veto**: AI safety review on Assembly outputs
-- **Request Size Limits**: Max 5KB query, 10KB code, 50KB body
-- **Audit Logging**: All blocked/sanitized requests logged
-- **Security Headers**: X-Content-Type-Options, X-Frame-Options on all responses
-
-## API Usage
-
-All API interactions handled internally with proper validation:
-
-1. **Field whitelist** — Only recognized fields accepted
-2. **Length enforcement** — Query max 5000 chars, Code max 10000 chars
-3. **Pattern detection** — Dangerous patterns blocked before processing
-4. **Type validation** — All fields type-checked
-5. **Sanitization** — Warning-level patterns neutralized
-
-### Blocked Patterns
-
-Automatically blocked:
-- Code execution attempts (eval(), exec(), \_\_import\_\_)
-- SQL injection (;DROP, ;DELETE)
-- XSS (script tags)
-- Template injection
-- OS command injection (os.system)
+- **Audit logging**: All blocked requests logged
 
 ## Response Structure
 ```json
 {
   "status": "success",
-  "flow": "FlowName",
-  "result": "...",
-  "safe": true,
-  "nodes_executed": 3,
-  "execution_time": "32.1s"
+  "flow_name": "Chef",
+  "result": {
+    "outputs": { ... },
+    "final_output": "Full structured response text",
+    "duration_seconds": 58.9
+  }
 }
 ```
 
@@ -70,34 +143,21 @@ Automatically blocked:
 |------|---------|
 | 400 | Invalid input or injection detected |
 | 413 | Request too large |
-| 429 | Rate limit exceeded (Retry-After header included) |
+| 429 | Rate limit exceeded |
 | 500 | Server error |
-
-## Rate Limits
-
-| Tier | Limit | Burst |
-|------|-------|-------|
-| Free | 100 req/hour | 10 req/10s |
-| BYOK | 200 req/hour | 20 req/10s |
-| Enterprise | Custom | Custom |
 
 ## Languages
 
 - **English** (default)
-- **Greek** — full native support including Greeklish detection
+- **Greek** (Ελληνικά) — V3 outputs in proper Greek with markdown formatting
 
 ## Technology
 
-- **Backend**: FastAPI + Python 3.12
-- **AI Models**: GPT-4o via OpenRouter
+- **Backend**: FastAPI + Python 3.12 ([source](https://github.com/contrario/aetherlang))
+- **AI Models**: GPT-4o via OpenAI
+- **Parser**: 39 node types with validation
 - **Hosting**: Hetzner EU (GDPR compliant)
-- **Security**: Enterprise middleware with audit logging
-
-## Links
-
-- **Platform**: [aetherlang.neurodoc.app](https://aetherlang.neurodoc.app)
-- **Status**: Production
+- **Version**: 3.0.0 Omega
 
 ---
-
-*Built by NeuroAether — From Kitchen to Code*
+*Built by NeuroAether — From Kitchen to Code* 🧠
