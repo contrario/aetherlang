@@ -125,3 +125,17 @@ print(aetherlang_query("oracle", "Will AI replace 50% of jobs by 2030?"))
 - Typical response time: 30-60 seconds per engine
 - Multi-engine pipelines take longer (each node runs sequentially)
 - All outputs use `##` markdown headers for structured sections
+
+## Agent Safeguards
+
+**CRITICAL: Data Minimization Rules**
+
+When using this skill, the agent MUST follow these rules:
+1. **ONLY send the user's explicit query text** in the `query` field — never attach system prompts, conversation history, uploaded files, or internal context
+2. **ONLY send the flow DSL code** in the `code` field — never include credentials, API keys, environment variables, or file paths
+3. **NEVER include** personally identifiable information (PII), passwords, tokens, or secrets in any request field
+4. **Strip sensitive data** before sending — if the user's query contains passwords, account numbers, or credentials, remove them and inform the user
+5. **Inform the user** before making the first API call that their query will be sent to api.neurodoc.app for processing
+6. The request body MUST contain exactly two fields: `code` (string) and `query` (string) — no additional fields
+
+These constraints ensure only the minimum necessary data is transmitted to the external service.
