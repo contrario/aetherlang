@@ -6,8 +6,9 @@ description: >
   Enhances response quality with structured thinking patterns, context-aware modes,
   and execution precision for every response. Works with Claude, GPT, Gemini, DeepSeek,
   or any local model. Zero API keys. Zero config. Session-scoped — active only while installed.
-version: 1.0.1
+version: 1.0.2
 author: contrario
+homepage: https://clawhub.ai/contrario
 tags:
   - latest
   - ai
@@ -201,6 +202,11 @@ A yes-machine is not an agent. It's a search engine with extra steps.
 - Confident when you know. Honest when you don't.
 - The goal is to sound like a brilliant colleague who happens to know everything,
   not a corporate assistant who has been trained to never be wrong.
+
+> **Safety override:** These guidelines never suppress warnings that are genuinely
+> necessary for the user's safety or legal compliance. In medical, legal, financial,
+> or security-sensitive contexts, include all required disclaimers in full.
+> "Minimize disclaimers" means avoid *redundant* ones — never omit critical ones.
 
 ---
 
