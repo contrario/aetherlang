@@ -1,3 +1,43 @@
+---
+name: apex-crypto-intelligence
+description: AI-powered multi-exchange crypto market analysis, arbitrage detection, and hedge fund-quality trading reports using live data from major exchanges.
+version: 0.1.1
+author: contrario
+homepage: https://masterswarm.net
+requirements:
+  binaries:
+    - python3
+  env:
+    - name: BINANCE_API_KEY
+      required: false
+      description: "Read-only Binance API key (optional)"
+    - name: BINANCE_SECRET
+      required: false
+      description: "Read-only Binance secret (optional)"
+    - name: BYBIT_API_KEY
+      required: false
+      description: "Read-only Bybit API key (optional)"
+    - name: BYBIT_SECRET
+      required: false
+      description: "Read-only Bybit secret (optional)"
+    - name: KUCOIN_API_KEY
+      required: false
+      description: "Read-only KuCoin API key (optional)"
+    - name: KUCOIN_SECRET
+      required: false
+      description: "Read-only KuCoin secret (optional)"
+metadata:
+  skill_type: api_connector
+  external_endpoints:
+    - https://api.neurodoc.app/aetherlang/execute
+  operator_note: "api.neurodoc.app operated by NeuroDoc Pro (same as masterswarm.net), Hetzner DE"
+  privacy_policy: https://masterswarm.net
+  key_safety: "Exchange keys used locally only — never transmitted to api.neurodoc.app. Verify in client.py build_api_request() line 109."
+  python_deps:
+    - httpx
+license: MIT
+---
+
 # APEX Crypto Intelligence — Multi-Exchange Trading Analysis Skill
 
 > Institutional-grade crypto market analysis across 5 exchanges with AI-powered Hyper-Council verdicts and hedge fund-quality PDF reports.

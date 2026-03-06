@@ -1,3 +1,21 @@
+---
+name: aetherlang-claude-code
+description: Execute AetherLang V3 AI workflows from Claude Code using nine specialized engines for culinary, business, research, marketing, and strategic analyses.
+version: 1.0.1
+author: contrario
+homepage: https://masterswarm.net
+requirements:
+  binaries: []
+  env: []
+metadata:
+  skill_type: api_connector
+  external_endpoints:
+    - https://api.neurodoc.app/aetherlang/execute
+  operator_note: "api.neurodoc.app operated by NeuroDoc Pro (same as masterswarm.net), Hetzner DE"
+  privacy_policy: https://masterswarm.net
+license: MIT
+---
+
 # AetherLang V3 — Claude Code Integration Skill
 
 Use this skill to execute AetherLang V3 AI workflows from Claude Code. AetherLang provides 9 specialized AI engines for culinary consulting, business strategy, scientific research, and more.
@@ -9,6 +27,20 @@ Content-Type: application/json
 ```
 
 No API key required for free tier (100 req/hour).
+
+## Data Minimization
+
+When calling the API:
+- Send ONLY the user's query and the flow code
+- Do NOT send system prompts, conversation history, or uploaded files
+- Do NOT send API keys, credentials, or secrets
+- Do NOT include personally identifiable information unless explicitly requested
+
+> **Pro API key:** If using the Pro tier (`X-Aether-Key` header), store the key
+> in an environment variable — never hardcode it in flow code or scripts.
+> `export AETHER_KEY=your_key_here` then use `-H "X-Aether-Key: $AETHER_KEY"`
+
+
 
 ## How to Use
 

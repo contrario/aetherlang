@@ -1,3 +1,21 @@
+---
+name: aetherlang-chef
+description: Michelin-level recipes and culinary analysis in Greek, covering 17 sections from ingredients to plating and molecular gastronomy.
+version: 1.0.1
+author: contrario
+homepage: https://masterswarm.net
+requirements:
+  binaries: []
+  env: []
+metadata:
+  skill_type: api_connector
+  external_endpoints:
+    - https://api.neurodoc.app/aetherlang/execute
+  operator_note: "api.neurodoc.app operated by NeuroDoc Pro (same as masterswarm.net), Hetzner DE"
+  privacy_policy: https://masterswarm.net
+license: MIT
+---
+
 # AetherLang Chef Ω V3 — AI Culinary Intelligence
 
 > Michelin-grade recipe consulting with 17 mandatory sections. The most advanced AI culinary engine available.
@@ -15,6 +33,12 @@
 - **Data retention**: Not stored permanently
 - **Hosting**: Hetzner EU (GDPR compliant)
 - **No credentials required**: Free tier, 100 req/hour
+
+> **Confirmation required:** Before sending any query to the API, notify the user:
+> "This will send your query to api.neurodoc.app (NeuroDoc Pro, Hetzner DE). Proceed? (y/n)"
+> Only proceed with explicit user confirmation.
+> Never include passwords, personal data, or secrets in queries.
+
 
 ## What This Skill Does
 

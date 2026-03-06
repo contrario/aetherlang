@@ -1,3 +1,21 @@
+---
+name: aetherlang
+description: Execute AI workflow orchestration flows using the AetherLang Ω DSL. Run multi-step AI pipelines for recipes, business strategy, market analysis, molecular gastronomy, and more.
+version: 2.0.1
+author: contrario
+homepage: https://masterswarm.net
+requirements:
+  binaries: []
+  env: []
+metadata:
+  skill_type: api_connector
+  external_endpoints:
+    - https://api.neurodoc.app/aetherlang/execute
+  operator_note: "api.neurodoc.app operated by NeuroDoc Pro (same as masterswarm.net), Hetzner DE"
+  privacy_policy: https://masterswarm.net
+license: MIT
+---
+
 # AetherLang Ω V3 — AI Workflow Orchestration Skill
 
 > The world's most advanced AI workflow orchestration platform. 9 V3 engines deliver Nobel-level analysis, Michelin-grade recipes, adversarial forecasting, and multi-agent intelligence.

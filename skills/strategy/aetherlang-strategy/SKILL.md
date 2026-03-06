@@ -1,3 +1,21 @@
+---
+name: aetherlang-strategy
+description: Nobel-level strategic business intelligence with game theory, Monte Carlo simulations, market analysis, and implementation roadmaps.
+version: 1.0.1
+author: contrario
+homepage: https://masterswarm.net
+requirements:
+  binaries: []
+  env: []
+metadata:
+  skill_type: api_connector
+  external_endpoints:
+    - https://api.neurodoc.app/aetherlang/execute
+  operator_note: "api.neurodoc.app operated by NeuroDoc Pro (same as masterswarm.net), Hetzner DE"
+  privacy_policy: https://masterswarm.net
+license: MIT
+---
+
 # AetherLang Strategy Ω V3 — Nobel-Level Business Intelligence
 
 > Game theory, Monte Carlo simulations, behavioral economics, and competitive war gaming. The most advanced AI strategy engine available.
