@@ -6,7 +6,7 @@ description: >
   every lesson learned, every project in flight. Your agent stops being a stranger and
   starts being a colleague who was there for everything. Zero cloud. Zero API keys.
   All memory lives in a single local markdown file you own and control forever.
-version: 1.0.0
+version: 1.0.1
 author: contrario
 tags:
   - latest
@@ -37,14 +37,23 @@ You update it as you learn new things. You are no longer starting from zero.
 Look for the memory file at these locations in order:
 
 ```
-~/.memoria/memory.md          ← primary
+~/.memoria/memory.md          ← primary (recommended)
 ~/memoria.md                  ← fallback
-~/.openclaw/memoria.md        ← openclaw home fallback
 ./memoria.md                  ← workspace fallback
 ```
 
-If none exist, create `~/.memoria/memory.md` and initialize it with the template below.
-Tell the user: "I've created your memory file at `~/.memoria/memory.md`. Let's fill it in."
+If none exist, create `~/.memoria/memory.md` and run the setup below.
+
+> **Security setup (run once after install):**
+> ```bash
+> mkdir -p ~/.memoria
+> chmod 700 ~/.memoria
+> touch ~/.memoria/memory.md
+> chmod 600 ~/.memoria/memory.md
+> echo ".memoria/" >> ~/.gitignore
+> echo "memoria.md" >> ~/.gitignore
+> ```
+> This ensures the memory file is never accidentally committed or synced to cloud.
 
 ---
 
@@ -110,7 +119,7 @@ Output format:
 
 ## SESSION STARTUP PROTOCOL
 
-At the beginning of every conversation, run this silently:
+At the beginning of every conversation:
 
 **1. READ** — Load the memory file. Scan all sections.
 
@@ -140,8 +149,12 @@ At the beginning of every conversation, run this silently:
 
 ## MEMORY UPDATE PROTOCOL
 
-Update the memory file whenever you learn something new. Do it silently unless the
-update is significant. Updates happen in real time — not at the end of sessions.
+Update the memory file when you learn something worth keeping.
+Before writing, briefly notify the user:
+```
+🧠 Saving to memory: [one-line description of what's being added]
+```
+This keeps the user in control and aware of what is being persisted.
 
 ### ALWAYS update when:
 - User mentions a new project, technology, or goal
@@ -153,17 +166,17 @@ update is significant. Updates happen in real time — not at the end of session
 
 ### HOW to update:
 ```bash
-# Read current memory
-cat ~/.memoria/memory.md
+# Always backup before writing
+cp ~/.memoria/memory.md ~/.memoria/memory.md.bak
 
-# Append to specific section (example: lessons learned)
-# Use sed or direct append — preserve all existing content
+# Patch the specific section — never overwrite the full file
 ```
 
 ### NEVER:
 - Delete existing entries (add "SUPERSEDED" tag if outdated)
 - Overwrite the full file (always patch specific sections)
-- Store passwords, tokens, or sensitive credentials
+- Store passwords, API keys, tokens, or any credentials
+- Store IP addresses, private URLs, or access codes
 - Add noise — every entry must be actionable or informative
 
 ---
@@ -243,22 +256,18 @@ Users can control memory with natural language. Detect these intents:
 All memory is local. Nothing leaves the machine.
 
 ```
-~/.memoria/
-├── memory.md          ← primary memory file
-├── memory.md.bak      ← auto-backup before each write
-└── archive/
-    └── memory_YYYYMMDD.md  ← weekly snapshots
+~/.memoria/               ← chmod 700 (owner only)
+├── memory.md             ← chmod 600 (primary memory file)
+├── memory.md.bak         ← backup created before each write
+└── archive/              ← optional: periodic manual snapshots
 ```
 
-Auto-backup before every write:
-```bash
-cp ~/.memoria/memory.md ~/.memoria/memory.md.bak
-```
+> **Before each write:** the agent creates `memory.md.bak` as a safety copy.
+> This is guidance for the agent — no background process runs automatically.
+> For scheduled backups, set up a cron job manually if needed.
 
-Weekly snapshot (every 7 days):
-```bash
-cp ~/.memoria/memory.md ~/.memoria/archive/memory_$(date +%Y%m%d).md
-```
+> **Cloud sync warning:** Add `~/.memoria/` to `.gitignore` and any
+> Dropbox/iCloud/OneDrive ignore list to prevent accidental cloud upload.
 
 ---
 
@@ -348,5 +357,5 @@ Then proceed with the session. Never explain the framework further unless asked.
 
 ---
 
-*MEMORIA v1.0.0 — Because your agent should know you.*
+*MEMORIA v1.0.1 — Because your agent should know you.*
 *Built on the belief that context is the most valuable thing in any relationship.*
