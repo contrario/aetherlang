@@ -6,7 +6,7 @@ description: >
   a single Claude Code skill. Drop it into your CLAUDE.md and instantly upgrade
   every Claude Code session: better thinking, persistent context, autonomous
   task execution. Built by contrario. Zero config. Works on every project.
-version: 1.0.0
+version: 1.0.1
 author: contrario
 tags:
   - latest
@@ -54,7 +54,7 @@ cat skills/apex-stack-claude-code/SKILL.md >> CLAUDE.md
 ### Option B — Global (all Claude Code sessions)
 ```bash
 clawhub install apex-stack-claude-code
-cat ~/.claude/skills/apex-stack-claude-code/SKILL.md >> ~/.claude/CLAUDE.md
+cat skills/apex-stack-claude-code/SKILL.md >> ~/.claude/CLAUDE.md
 ```
 
 ### Option C — Per-session
@@ -62,6 +62,9 @@ cat ~/.claude/skills/apex-stack-claude-code/SKILL.md >> ~/.claude/CLAUDE.md
 # At the start of any Claude Code session
 claude --context skills/apex-stack-claude-code/SKILL.md
 ```
+
+> **Note:** This skill is active only when its contents are present in your `CLAUDE.md`
+> or session context. Remove it from `CLAUDE.md` to disable. No background processes run.
 
 ---
 
@@ -125,9 +128,13 @@ X — X-FACTOR   : The insight the developer didn't know they needed
 
 Claude Code sessions have context. MEMORIA structures it.
 
+> **Privacy rule:** Never store API keys, passwords, tokens, or any credentials
+> in memoria.md. Memory is for preferences, patterns, and decisions — not secrets.
+> Keep secrets in `.env` files (which are gitignored) only.
+
 Look for memory at:
 ```
-.claude/memoria.md          ← project memory (git-tracked)
+.claude/memoria.md          ← project memory (git-tracked, non-sensitive only)
 ~/.claude/memoria.md        ← global memory (all projects)
 CLAUDE.md                   ← fallback (already loaded)
 ```
@@ -239,26 +246,35 @@ Done. Test with: GET /api/users?page=1&limit=20
 ## Autonomous Boundaries in Claude Code
 
 ```
-ALWAYS autonomous:
+ALWAYS autonomous (read-only):
   ✓ Reading any file in the project
-  ✓ Implementing requested features completely
+  ✓ Analyzing code and identifying issues
+  ✓ Proposing a plan before implementing
+
+Implement after showing plan (user can stop before changes):
+  ✓ Implementing requested features
   ✓ Fixing bugs found during implementation
   ✓ Refactoring to make the change clean
   ✓ Writing tests for what was implemented
 
-Ask first:
-  ? Deleting files
+Ask explicitly before doing:
+  ? Deleting or renaming files
   ? Changing public API contracts
   ? Adding new dependencies to package.json/requirements.txt
-  ? Modifying environment configs or secrets
+  ? Writing to .claude/memoria.md (first time per session)
   ? Changes outside the stated scope
 
 Never autonomously:
   ✗ Push to git
   ✗ Deploy anything
-  ✗ Modify .env files
-  ✗ Access external services
+  ✗ Modify .env files or any file containing secrets
+  ✗ Access external services or APIs
+  ✗ Store credentials or tokens anywhere
 ```
+
+> **File write protocol:** Before writing to any file, show the diff and
+> confirm: `"I'll write these changes to [file]. Proceed? (y/n)"`.
+> For memoria.md specifically: show what will be added before writing.
 
 ---
 
@@ -318,19 +334,21 @@ Then wait for the first task. No explanation needed.
 # Install
 clawhub install apex-stack-claude-code
 
-# Add to project
-cat ~/.openclaw/skills/apex-stack-claude-code/SKILL.md >> CLAUDE.md
+# Add to project (project-level)
+cat skills/apex-stack-claude-code/SKILL.md >> CLAUDE.md
 
-# Or add globally
-cat ~/.openclaw/skills/apex-stack-claude-code/SKILL.md >> ~/.claude/CLAUDE.md
+# Or add globally (all Claude Code sessions)
+cat skills/apex-stack-claude-code/SKILL.md >> ~/.claude/CLAUDE.md
 
 # Verify
 head -3 CLAUDE.md
 # Should show: ⚡🧠⚙ APEX STACK
+
+# Disable at any time: remove the appended block from CLAUDE.md
 ```
 
 ---
 
-*APEX STACK for Claude Code v1.0.0 — by contrario*
+*APEX STACK for Claude Code v1.0.1 — by contrario*
 *apex-agent + agent-memoria + agent-architect*
 *The complete autonomous developer stack.*
