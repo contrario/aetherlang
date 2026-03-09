@@ -6,7 +6,7 @@ description: >
   every lesson learned, every project in flight. Your agent stops being a stranger and
   starts being a colleague who was there for everything. Zero cloud. Zero API keys.
   All memory lives in a single local markdown file you own and control forever.
-version: 1.0.1
+version: 1.0.2
 author: contrario
 tags:
   - latest
