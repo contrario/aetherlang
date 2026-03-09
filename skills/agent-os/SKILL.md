@@ -1,9 +1,8 @@
 ---
 name: AGENT-OS
-version: 1.0.2
+version: 1.0.3
 author: contrario
 homepage: https://clawhub.ai/contrario
-license: MIT
 description: The operating system layer for AI agents. Understands your goal, selects the right skills, executes with checkpoints.
 metadata:
   openclaw:
