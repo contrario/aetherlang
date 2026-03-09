@@ -21,7 +21,6 @@ metadata:
     - developer productivity
     - solo founders
     - complex task execution
-license: MIT
 ---
 
 # AGENT-OS — The Operating System for AI Agents
