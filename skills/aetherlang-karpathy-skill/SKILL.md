@@ -1,12 +1,12 @@
 ---
 name: aetherlang-karpathy-skill
 description: >
-  API connector for AetherLang Omega — execute 10 Karpathy-style agent node types
+  API connector for AetherLang Omega — execute 10 Karpathy-inspired agent node types
   (plan, code_interpreter, critique, router, ensemble, memory, tool, loop, transform,
   parallel) via the hosted AetherLang API at api.neurodoc.app. This skill sends your
   query and flow code to the API and returns results. No local code execution.
   No runtime modification. No credentials required.
-version: 1.0.1
+version: 1.0.2
 author: contrario
 homepage: https://clawhub.ai/contrario
 requirements:
@@ -14,6 +14,7 @@ requirements:
   env: []
 metadata:
   skill_type: api_connector
+  operator_note: "AetherLang Omega is operated by NeuroDoc Pro (masterswarm.net), hosted on Hetzner EU. Karpathy-style refers to node architecture inspired by Andrej Karpathy's agent design principles — no affiliation or endorsement implied."
   external_endpoints:
     - https://api.neurodoc.app/aetherlang/execute
   domains_not_recommended:
