@@ -21,7 +21,9 @@
 
 ## 🎬 Demo
 
-[![AetherLang Demo](https://cdn.loom.com/sessions/thumbnails/92bc1bd7c72f4250a365d422b2b615ab-with-play.gif)](https://www.loom.com/share/92bc1bd7c72f4250a365d422b2b615ab)
+[![AetherLang Demo](docs/demo-thumbnail.png)](https://www.loom.com/share/92bc1bd7c72f4250a365d422b2b615ab)
+
+*🎥 Click to watch demo*
 
 ## 🌟 What is AetherLang?
 
@@ -369,5 +371,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## Demo
 
-[![AetherLang Demo](https://cdn.loom.com/sessions/thumbnails/92bc1bd7c72f4250a365d422b2b615ab-with-play.gif)](https://www.loom.com/share/92bc1bd7c72f4250a365d422b2b615ab)
+[![AetherLang Demo](docs/demo-thumbnail.png)](https://www.loom.com/share/92bc1bd7c72f4250a365d422b2b615ab)
+
+*🎥 Click to watch demo*
 
