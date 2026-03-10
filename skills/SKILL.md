@@ -1,7 +1,7 @@
 ---
 name: aetherlang
 description: Execute AI workflow orchestration flows using the AetherLang Ω DSL. Run multi-step AI pipelines for recipes, business strategy, market analysis, molecular gastronomy, and more.
-version: 2.0.1
+version: 9.9.9
 author: contrario
 homepage: https://masterswarm.net
 requirements:
