@@ -1,7 +1,7 @@
 ---
 name: aetherlang
 description: Execute AI workflow orchestration flows using the AetherLang Ω DSL. Run multi-step AI pipelines for recipes, business strategy, market analysis, molecular gastronomy, and more.
-version: 9.9.9
+version: 9.9.11
 author: contrario
 homepage: https://masterswarm.net
 requirements:
@@ -41,7 +41,7 @@ Users should avoid including sensitive personal information, passwords, or confi
 
 AetherLang Ω V3 is a domain-specific language for AI that orchestrates multi-model workflows with built-in safety, debugging, and real-time collaboration. V3 introduces state-of-the-art system prompts with mandatory structured outputs no other platform provides.
 
-All user inputs are validated and sanitized server-side before processing. The security middleware source code is publicly available in the [GitHub repository](https://github.com/contrario/aetherlang/blob/main/aetherlang/middleware/security.py).
+All user inputs are validated and sanitized server-side before processing. Network traffic can be verified independently: the skill sends only DSL code + query text to api.neurodoc.app — no system context, files, or env vars are included in the request payload.
 
 ## V3 Engines — State-of-the-Art
 
