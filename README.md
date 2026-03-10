@@ -361,3 +361,8 @@ MIT License — see [LICENSE](LICENSE) for details.
 [⭐ Star on GitHub](https://github.com/contrario/aetherlang) · [🦞 Install on OpenClaw](https://clawhub.ai/skills/aetherlang) · [🐛 Report Bug](https://github.com/contrario/aetherlang/issues)
 
 </div>
+
+## Demo
+
+[![AetherLang Demo](https://cdn.loom.com/sessions/thumbnails/92bc1bd7c72f4250a365d422b2b615ab-with-play.gif)](https://www.loom.com/share/92bc1bd7c72f4250a365d422b2b615ab)
+
