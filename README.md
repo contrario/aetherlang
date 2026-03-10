@@ -18,6 +18,11 @@
 
 ---
 
+
+## 🎬 Demo
+
+[![AetherLang Demo](https://cdn.loom.com/sessions/thumbnails/92bc1bd7c72f4250a365d422b2b615ab-with-play.gif)](https://www.loom.com/share/92bc1bd7c72f4250a365d422b2b615ab)
+
 ## 🌟 What is AetherLang?
 
 AetherLang (Ω) is a **production-ready DSL** designed specifically for building, visualizing, and executing complex AI workflows. Think of it as **"Airflow meets Prefect"** but with a clean, declarative syntax optimized for LLM orchestration.
