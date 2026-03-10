@@ -56,7 +56,7 @@ license: MIT
 
 **Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang/tree/main/skills/apex-crypto-intelligence)
 **Homepage**: [neurodoc.app](https://neurodoc.app)
-**Author**: NeuroAether (info@neurodoc.app)
+**Author**: NeuroAether (echelonvoids@protonmail.com)
 **License**: MIT
 **Version**: 0.2.0
 

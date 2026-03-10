@@ -4,7 +4,7 @@
 
 **Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang)
 **Homepage**: [neurodoc.app/aether-nexus-omega-dsl](https://neurodoc.app/aether-nexus-omega-dsl)
-**Author**: NeuroAether (info@neurodoc.app)
+**Author**: NeuroAether (echelonvoids@protonmail.com)
 **License**: MIT
 
 ## Privacy & Data Handling

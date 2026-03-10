@@ -21,7 +21,7 @@ license: MIT
 > Michelin-grade recipe consulting with 17 mandatory sections. The most advanced AI culinary engine available.
 
 **Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang)
-**Author**: NeuroAether (info@neurodoc.app)
+**Author**: NeuroAether (echelonvoids@protonmail.com)
 **License**: MIT
 
 ## Privacy & Data Handling

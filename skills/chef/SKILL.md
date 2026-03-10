@@ -1,9 +1,23 @@
+---
+name: aetherlang-chef
+version: 1.2.0
+author: contrario
+homepage: https://omnimusmind.com
+license: MIT
+description: Michelin-grade AI culinary intelligence. 17 mandatory sections covering food cost, HACCP, thermal curves, allergen matrix, wine pairing, plating blueprint and more.
+metadata:
+  skill_type: api_connector
+  external_endpoints:
+    - https://api.neurodoc.app/aetherlang/execute
+  operator_note: "api.neurodoc.app operated by NeuroDoc Pro (omnimusmind.com), Hetzner DE"
+---
+
 # AetherLang Chef Ω V3 — AI Culinary Intelligence
 
 > Michelin-grade recipe consulting with 17 mandatory sections. The most advanced AI culinary engine available.
 
 **Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang)
-**Author**: NeuroAether (info@neurodoc.app)
+**Author**: NeuroAether (echelonvoids@protonmail.com)
 **License**: MIT
 
 ## Privacy & Data Handling

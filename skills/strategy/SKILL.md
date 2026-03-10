@@ -3,7 +3,7 @@
 > Game theory, Monte Carlo simulations, behavioral economics, and competitive war gaming. The most advanced AI strategy engine available.
 
 **Source Code**: [github.com/contrario/aetherlang](https://github.com/contrario/aetherlang)
-**Author**: NeuroAether (info@neurodoc.app)
+**Author**: NeuroAether (echelonvoids@protonmail.com)
 **License**: MIT
 
 ## Privacy & Data Handling

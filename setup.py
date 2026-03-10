@@ -10,7 +10,7 @@ setup(
     name="aetherlang",
     version="0.3.1",
     author="NeuroAether",
-    author_email="info@neurodoc.app",
+    author_email="echelonvoids@protonmail.com",
     description="A powerful Domain-Specific Language for AI Workflow Orchestration",
     long_description=long_description,
     long_description_content_type="text/markdown",
