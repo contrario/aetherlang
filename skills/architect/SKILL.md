@@ -7,7 +7,7 @@ description: >
   failure, and delivers results — all without hand-holding. The missing execution
   layer for personal AI agents. Zero dependencies. Zero config. Works with any model.
   Pairs with apex-agent and agent-memoria for the complete autonomous agent stack.
-version: 1.0.2
+version: 1.0.4
 author: contrario
 tags:
   - latest

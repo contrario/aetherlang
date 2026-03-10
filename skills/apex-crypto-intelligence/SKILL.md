@@ -1,7 +1,7 @@
 ---
 name: apex-crypto-intelligence
 description: AI-powered multi-exchange crypto market analysis, arbitrage detection, and hedge fund-quality trading reports using live data from major exchanges.
-version: 0.2.0
+version: 0.2.1
 author: contrario
 homepage: https://masterswarm.net
 requirements:

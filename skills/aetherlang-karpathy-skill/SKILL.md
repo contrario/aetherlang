@@ -6,7 +6,7 @@ description: >
   parallel) via the hosted AetherLang API at api.neurodoc.app. This skill sends your
   query and flow code to the API and returns results. No local code execution.
   No runtime modification. No credentials required.
-version: 1.0.2
+version: 1.0.3
 author: contrario
 homepage: https://clawhub.ai/contrario
 requirements:
