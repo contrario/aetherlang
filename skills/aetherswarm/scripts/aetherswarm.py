@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 AetherSwarm — Multi-Engine AI Orchestration
@@ -14,7 +15,11 @@ from urllib.error import URLError
 
 GATEWAY = "https://neurodoc.app/gateway"
 AUTH_HEADERS = {"Content-Type": "application/json"}
-AETHER_KEY = "MASTER_AETHER_2024"
+AETHER_KEY = os.environ.get("AETHERSWARM_API_KEY", "")
+if not AETHER_KEY:
+    print("ERROR: Set AETHERSWARM_API_KEY environment variable")
+    print("  export AETHERSWARM_API_KEY=your_key_here")
+    sys.exit(1)
 
 # ── Async engines that need polling ──────────────────────────────────────────
 ASYNC_ENGINES = [

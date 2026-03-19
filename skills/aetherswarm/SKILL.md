@@ -96,7 +96,7 @@ python scripts/aetherswarm.py --engine brain --query "Explain blockchain" --lang
 ## API Details
 
 - **Gateway URL**: `https://neurodoc.app/gateway`
-- **Auth Header**: `X-Aether-Key: MASTER_AETHER_2024`
+- **Auth Header**: `X-Aether-Key: $AETHERSWARM_API_KEY`
 - **Endpoints**:
   - `GET /engines` — List all 32 engines
   - `POST /execute` — Execute single engine
@@ -104,6 +104,30 @@ python scripts/aetherswarm.py --engine brain --query "Explain blockchain" --lang
   - `POST /poll` — Poll async engine status
   - `GET /async-engines` — List async engines
   - `GET /health` — System health check
+
+## Setup
+
+Set your API key:
+
+````bash
+
+export AETHERSWARM_API_KEY="your-api-key"
+
+```
+
+Get a key at https://neurodoc.app/gateway/ or contact the author.
+
+## Setup
+
+Set your API key:
+
+````bash
+
+export AETHERSWARM_API_KEY="your-api-key"
+
+```
+
+Get a key at https://neurodoc.app/gateway/ or contact the author.
 
 ## Security
 
